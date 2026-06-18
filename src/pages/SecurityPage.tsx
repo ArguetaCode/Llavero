@@ -10,7 +10,13 @@ interface SecurityPageProps {
   autoLockMinutes: number;
   audit: VaultAudit | null;
   activeProfileName: string;
+  activeProfileVaultId: string;
   activeProfileUpdatedAt: string;
+  activeProfileRemoteVaultId?: string;
+  activeProfileRemoteDisplayName?: string;
+  activeProfileLastRemoteSyncAt?: string;
+  activeProfileLastRemoteUploadAt?: string;
+  activeProfileLastRemoteDownloadAt?: string;
   entries: PasswordEntry[];
   isRemoteAuthenticated: boolean;
   lastManualDownloadAt: string | null;
@@ -41,7 +47,13 @@ export function SecurityPage({
   autoLockMinutes,
   audit,
   activeProfileName,
+  activeProfileVaultId,
   activeProfileUpdatedAt,
+  activeProfileRemoteVaultId,
+  activeProfileRemoteDisplayName,
+  activeProfileLastRemoteSyncAt,
+  activeProfileLastRemoteUploadAt,
+  activeProfileLastRemoteDownloadAt,
   entries,
   isRemoteAuthenticated,
   lastManualDownloadAt,
@@ -86,6 +98,7 @@ export function SecurityPage({
   const [remoteMessage, setRemoteMessage] = useState<ToastMessage | null>(null);
   const [selectedRemoteVaultId, setSelectedRemoteVaultId] = useState('');
   const [remoteMasterPassword, setRemoteMasterPassword] = useState('');
+  const [replaceConfirmation, setReplaceConfirmation] = useState('');
 
   const stats = useMemo(() => {
     const passwordCounts = new Map<string, number>();
@@ -160,8 +173,42 @@ export function SecurityPage({
     onCancelBackupImport();
     setBackupPassword('');
     setSelectedFile(null);
+    setReplaceConfirmation('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  }
+
+  async function handleConfirmImport(mode: 'replace-current' | 'new'): Promise<void> {
+    setBackupMessage(null);
+    setRemoteMessage(null);
+
+    if (mode === 'replace-current' && replaceConfirmation !== 'REEMPLAZAR') {
+      setBackupMessage({ type: 'error', message: 'Escribe REEMPLAZAR para confirmar el reemplazo.' });
+      return;
+    }
+
+    setIsWorking(true);
+    try {
+      await onConfirmBackupImport(mode);
+      setReplaceConfirmation('');
+      setBackupPassword('');
+      setSelectedFile(null);
+      setRemoteMasterPassword('');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      setBackupMessage({
+        type: 'success',
+        message: mode === 'new' ? 'Bóveda importada como perfil local separado.' : 'Bóveda activa reemplazada.',
+      });
+    } catch (error) {
+      setBackupMessage({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'No se pudo confirmar la importación.',
+      });
+    } finally {
+      setIsWorking(false);
     }
   }
 
@@ -308,6 +355,7 @@ export function SecurityPage({
   }
 
   const selectedRemoteVault = remoteVaults.find((remoteVault) => remoteVault.id === selectedRemoteVaultId) ?? null;
+  const pendingRemoteDisplayName = pendingImportPreview?.remoteDisplayName ?? pendingImportPreview?.displayName ?? 'Bóveda importada';
   const hasPotentialConflict =
     selectedRemoteVault && activeProfileUpdatedAt && selectedRemoteVault.updatedAt !== activeProfileUpdatedAt;
 
@@ -505,8 +553,10 @@ export function SecurityPage({
         </p>
         <div className="modal-summary">
           <span>Estado: {remoteUser ? `Conectado como ${remoteUser.email}` : 'Modo local'}</span>
-          <span>Última subida manual: {formatOptionalDate(lastManualUploadAt)}</span>
-          <span>Última descarga manual: {formatOptionalDate(lastManualDownloadAt)}</span>
+          <span>Remota vinculada: {activeProfileRemoteDisplayName ?? activeProfileRemoteVaultId ?? 'Sin vínculo remoto'}</span>
+          <span>Última sync local: {formatOptionalDate(activeProfileLastRemoteSyncAt ?? null)}</span>
+          <span>Última subida local: {formatOptionalDate(activeProfileLastRemoteUploadAt ?? lastManualUploadAt)}</span>
+          <span>Última descarga local: {formatOptionalDate(activeProfileLastRemoteDownloadAt ?? lastManualDownloadAt)}</span>
         </div>
         <div className="modal-actions">
           <button className="primary-button" type="button" disabled={isWorking || !isRemoteAuthenticated} onClick={handleUploadActiveVault}>
@@ -530,13 +580,18 @@ export function SecurityPage({
               </select>
             </label>
             <div className="remote-vault-list">
-              {remoteVaults.map((remoteVault) => (
-                <article className="remote-vault-item" key={remoteVault.id}>
-                  <strong>{remoteVault.displayName}</strong>
-                  <span>Actualizada: {new Date(remoteVault.updatedAt).toLocaleString()}</span>
-                  <span>Payload: v{remoteVault.payloadVersion}</span>
-                </article>
-              ))}
+              {remoteVaults.map((remoteVault) => {
+                const matchesActiveVault =
+                  remoteVault.id === activeProfileRemoteVaultId || remoteVault.clientVaultId === activeProfileVaultId;
+                return (
+                  <article className="remote-vault-item" key={remoteVault.id}>
+                    <strong>{remoteVault.displayName}</strong>
+                    <span>Actualizada: {new Date(remoteVault.updatedAt).toLocaleString()}</span>
+                    <span>Payload: v{remoteVault.payloadVersion}</span>
+                    <span>{matchesActiveVault ? 'Coincide con la bóveda local activa' : 'Perfil remoto separado'}</span>
+                  </article>
+                );
+              })}
             </div>
             {hasPotentialConflict && (
               <p className="form-error">Puede existir una versión más reciente. Revisa antes de reemplazar.</p>
@@ -639,18 +694,41 @@ export function SecurityPage({
             <h2 id="importTitle">Importar respaldo cifrado</h2>
             <p>El respaldo fue descifrado correctamente. Puedes reemplazar la bóveda activa o importarlo como bóveda local separada.</p>
             <div className="modal-summary">
+              <span>Bóveda local actual: {activeProfileName}</span>
+              <span>Fecha local: {new Date(activeProfileUpdatedAt).toLocaleString()}</span>
+              <span>Bóveda a importar: {pendingRemoteDisplayName}</span>
+              {pendingImportPreview.remoteUpdatedAt && (
+                <span>Fecha remota: {new Date(pendingImportPreview.remoteUpdatedAt).toLocaleString()}</span>
+              )}
               <span>Elementos: {pendingImportPreview.itemCount}</span>
               <span>Exportado: {new Date(pendingImportPreview.exportedAt).toLocaleString()}</span>
               <span>Esquema: {pendingImportPreview.schemaVersion}</span>
             </div>
+            <p className="form-error">
+              Reemplazar sobrescribe la bóveda local activa en este navegador. Si cancelas, no se cambia nada.
+            </p>
+            <label className="field" htmlFor="replaceConfirmation">
+              <span>Escribe REEMPLAZAR para reemplazar la bóveda activa</span>
+              <input
+                id="replaceConfirmation"
+                value={replaceConfirmation}
+                autoComplete="off"
+                onChange={(event) => setReplaceConfirmation(event.target.value)}
+              />
+            </label>
             <div className="modal-actions">
               <button className="ghost-button" type="button" disabled={isWorking} onClick={handleCancelImport}>
                 Cancelar
               </button>
-              <button className="secondary-button" type="button" disabled={isWorking} onClick={() => onConfirmBackupImport('new')}>
+              <button className="secondary-button" type="button" disabled={isWorking} onClick={() => handleConfirmImport('new')}>
                 Importar nueva
               </button>
-              <button className="danger-button" type="button" disabled={isWorking} onClick={() => onConfirmBackupImport('replace-current')}>
+              <button
+                className="danger-button"
+                type="button"
+                disabled={isWorking || replaceConfirmation !== 'REEMPLAZAR'}
+                onClick={() => handleConfirmImport('replace-current')}
+              >
                 Reemplazar actual
               </button>
             </div>

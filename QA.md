@@ -76,22 +76,43 @@
 ## Cuenta remota y sincronización manual
 
 - Levantar backend con `cd backend && docker compose up --build backend`.
+- Resultado esperado: API disponible en `http://localhost:8080` y frontend sin romper modo local.
 - Configurar `VITE_API_BASE_URL=http://localhost:8080`.
 - Crear una bóveda local A y agregar un registro falso.
+- Resultado esperado: el registro solo existe dentro de la bóveda A desbloqueada.
 - Ir a Seguridad > Cuenta remota.
 - Registrar usuario remoto con email, nombre y contraseña de cuenta remota.
 - Confirmar que la UI aclara que no es la contraseña maestra.
+- Resultado esperado: la app queda conectada y no pide contraseña maestra para la cuenta remota.
 - Cerrar sesión remota.
+- Resultado esperado: se limpian usuario remoto, token en memoria y listado remoto.
 - Iniciar sesión remota con el usuario creado.
+- Probar inicio de sesión con contraseña remota incorrecta.
+- Resultado esperado: mostrar “Credenciales remotas incorrectas.” sin detalle técnico.
 - Subir bóveda activa desde “Sincronización cifrada”.
+- Resultado esperado: se crea o actualiza una bóveda remota; la metadata local muestra última subida y vínculo remoto.
 - Ver bóvedas remotas y confirmar que aparece solo nombre, fecha y versión.
+- Resultado esperado: si coincide con la bóveda local activa, aparece el indicador de coincidencia.
 - Confirmar que no se muestra `encryptedPayload` completo.
 - Descargar bóveda remota con contraseña maestra incorrecta y validar error.
+- Resultado esperado: mostrar “No se pudo descifrar. Verifica la contraseña maestra de esa bóveda.”
 - Descargar bóveda remota con contraseña maestra correcta.
+- Resultado esperado: se abre modal de importación sin reemplazar todavía.
 - Importar como nueva bóveda local y confirmar que se crea un perfil separado.
+- Resultado esperado: la nueva bóveda conserva metadata remota no sensible y no mezcla datos con la bóveda A.
 - Descargar otra vez y reemplazar bóveda activa solo después de confirmar.
+- Resultado esperado: el modal muestra nombre local, nombre remoto, fecha local, fecha remota y exige escribir `REEMPLAZAR`.
+- Resultado esperado: al cancelar no se modifica ninguna bóveda local.
+- Resultado esperado: al confirmar se reemplaza únicamente la bóveda activa.
+- Apagar backend e intentar listar/subir.
+- Resultado esperado: mostrar “No se pudo conectar con el servidor. El modo local sigue disponible.”
 - Apagar backend y confirmar que el modo local sigue funcionando.
+- Probar sesión remota vencida o token inválido si es posible.
+- Resultado esperado: mostrar “Sesión remota vencida o inválida. Inicia sesión otra vez.”
+- Probar payload remoto inválido si es posible.
+- Resultado esperado: mostrar error claro de payload/respaldo inválido sin stack trace ni JSON crudo.
 - Revisar Network y confirmar que no se envía contraseña maestra ni bóveda descifrada.
+- Revisar IndexedDB y confirmar que solo se guarda metadata no sensible de sync: `remoteVaultId`, `remoteDisplayName`, `lastRemoteSyncAt`, `lastRemoteUploadAt`, `lastRemoteDownloadAt`.
 
 ## Eliminación de bóveda
 
@@ -142,6 +163,7 @@
 - Revisar Local Storage: no debe contener secretos.
 - Revisar Session Storage: no debe contener secretos.
 - Confirmar que el access token remoto no queda en Local Storage ni Session Storage.
+- Confirmar que el access token remoto no queda en IndexedDB.
 - Revisar Cache Storage: solo debe contener shell/assets públicos, no respaldos ni datos de bóveda.
 - Revisar consola: no debe imprimir contraseña maestra ni contraseñas.
 

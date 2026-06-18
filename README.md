@@ -44,6 +44,7 @@ La carpeta `backend/` contiene el servicio Spring Boot para cuentas remotas y si
 - La fase 2.0.1 agrega Maven Wrapper, Dockerfile, Compose con API opcional, tests backend ampliados, ejemplos HTTP y CI básico.
 - PostgreSQL se levanta con Docker Compose en `backend/docker-compose.yml`.
 - La fase 2.1 conecta la UI a login remoto y sincronización manual desde Seguridad.
+- La fase 2.1.1 estabiliza mensajes de error, metadata local de sync y confirmación explícita antes de reemplazar.
 - El access token se guarda solo en memoria de React. Si recargas la app, debes iniciar sesión remota otra vez.
 - La resolución automática de conflictos y el refresh token seguro quedan para una fase posterior.
 
@@ -76,8 +77,19 @@ Desde la app:
 4. Usar Ver bóvedas remotas para listar blobs cifrados.
 5. Seleccionar una bóveda remota, ingresar su contraseña maestra local y descargar.
 6. Confirmar si se importa como nueva bóveda local o reemplaza la bóveda activa.
+7. Para reemplazar, revisar nombre/fecha local, nombre/fecha remota y escribir `REEMPLAZAR`.
 
-La contraseña maestra y la bóveda descifrada nunca se envían al backend.
+La contraseña maestra y la bóveda descifrada nunca se envían al backend. El servidor guarda solo el blob cifrado (`encryptedPayload`) y metadata no sensible como nombre, versión de payload y fechas.
+
+La app guarda metadata local no sensible por bóveda para evitar duplicados remotos y mostrar estado de sincronización:
+
+- `remoteVaultId`
+- `remoteDisplayName`
+- `lastRemoteSyncAt`
+- `lastRemoteUploadAt`
+- `lastRemoteDownloadAt`
+
+Al subir, si la bóveda local ya conoce su `remoteVaultId`, actualiza esa bóveda remota. Si no, busca una remota con el mismo `clientVaultId`; si tampoco existe, crea una nueva. No hay sincronización automática ni resolución automática de conflictos en esta fase.
 
 ## Compilación
 
@@ -161,7 +173,7 @@ Antes de compartir una build de prueba, sigue [RELEASE_CHECKLIST.md](RELEASE_CHE
 - Panel de seguridad con conteos de contraseñas débiles y repetidas.
 - Exportación e importación de respaldo cifrado.
 - Cuenta remota opcional con token en memoria.
-- Sincronización manual de bóveda activa como blob cifrado.
+- Sincronización manual de bóveda activa como blob cifrado, con metadata local no sensible.
 - Eliminación de la bóveda local activa sin borrar otros perfiles locales.
 - Cambio de contraseña maestra con re-cifrado completo de la bóveda.
 - Auditoría local de contraseñas débiles, repetidas, favoritas y registros incompletos.
@@ -183,6 +195,7 @@ Antes de compartir una build de prueba, sigue [RELEASE_CHECKLIST.md](RELEASE_CHE
 - IndexedDB guarda solo `salt`, `iv`, bóveda cifrada, fecha de creación y versión de esquema.
 - No se usan `localStorage` ni `sessionStorage` para datos sensibles.
 - El token remoto se mantiene solo en memoria y se pierde al recargar.
+- El token remoto no se guarda en IndexedDB, Local Storage ni Session Storage.
 - La bóveda descifrada vive en memoria solo mientras está desbloqueada.
 - El bloqueo manual y automático limpia el estado sensible de la app lo mejor posible desde JavaScript.
 - Los respaldos exportados contienen solo metadata no sensible y la bóveda cifrada.

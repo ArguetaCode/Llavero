@@ -16,7 +16,7 @@ import { deleteVaultProfile, getVaultProfile, listVaultProfiles, saveVaultProfil
 import { auditVault } from './domain/vaultAudit';
 import { fetchRemoteMe, loginRemote, registerRemote, type LoginRemoteInput, type RegisterRemoteInput, type RemoteUser } from './api/authApi';
 import { createRemoteVault, listRemoteVaults, updateRemoteVault, type RemoteVault } from './api/vaultSyncApi';
-import { createRemoteVaultUploadPayload, parseRemoteEncryptedPayload } from './sync/vaultSyncPayload';
+import { createRemoteVaultUploadPayload, findExistingRemoteVault, parseRemoteEncryptedPayload } from './sync/vaultSyncPayload';
 import type { AppView, BackupImportPreview, LocalVaultProfile, PasswordEntry, VaultData } from './domain/types';
 
 const DEFAULT_AUTO_LOCK_MINUTES = 2;
@@ -167,7 +167,7 @@ function App() {
 
     const payload = createRemoteVaultUploadPayload(storedProfile);
     const latestRemoteVaults = await listRemoteVaults(accessToken);
-    const existing = latestRemoteVaults.find((remoteVault) => remoteVault.clientVaultId === payload.clientVaultId);
+    const existing = findExistingRemoteVault(storedProfile, latestRemoteVaults);
     const saved = existing
       ? await updateRemoteVault(accessToken, existing.id, payload)
       : await createRemoteVault(accessToken, payload);
@@ -175,8 +175,18 @@ function App() {
       ? latestRemoteVaults.map((remoteVault) => (remoteVault.id === saved.id ? saved : remoteVault))
       : [saved, ...latestRemoteVaults];
 
+    const syncedAt = new Date().toISOString();
+    const nextProfile: LocalVaultProfile = {
+      ...storedProfile,
+      remoteVaultId: saved.id,
+      remoteDisplayName: saved.displayName,
+      lastRemoteSyncAt: syncedAt,
+      lastRemoteUploadAt: syncedAt,
+    };
+    await saveVaultProfile(nextProfile);
+    setProfiles((current) => current.map((profile) => (profile.vaultId === nextProfile.vaultId ? nextProfile : profile)));
     setRemoteVaults(nextVaults);
-    setLastManualUploadAt(new Date().toISOString());
+    setLastManualUploadAt(syncedAt);
     showToast(existing ? 'Bóveda remota actualizada.' : 'Bóveda activa subida cifrada.');
   }
 
@@ -214,10 +224,13 @@ function App() {
       itemCount: importedVault.entries.length,
       schemaVersion: backup.schemaVersion,
       displayName: profile.displayName,
+      source: 'remote',
+      remoteVaultId: remoteVault.id,
+      remoteDisplayName: remoteVault.displayName,
+      remoteUpdatedAt: remoteVault.updatedAt,
     };
 
     setPendingBackupImport({ profile, vault: importedVault, key, preview });
-    setLastManualDownloadAt(new Date().toISOString());
     return preview;
   }
 
@@ -420,6 +433,7 @@ function App() {
       itemCount: importedVault.entries.length,
       schemaVersion: backup.schemaVersion,
       displayName: profile.displayName,
+      source: 'file',
     };
 
     setPendingBackupImport({
@@ -438,6 +452,7 @@ function App() {
 
   async function handleConfirmBackupImport(mode: 'replace-current' | 'new' = 'replace-current'): Promise<void> {
     if (!pendingBackupImport) throw new Error('No hay un respaldo validado para importar.');
+    const syncDownloadedAt = pendingBackupImport.preview.source === 'remote' ? new Date().toISOString() : undefined;
 
     const profile =
       mode === 'new'
@@ -447,16 +462,26 @@ function App() {
             vaultId: activeProfile?.vaultId ?? pendingBackupImport.profile.vaultId,
             displayName: activeProfile?.displayName ?? pendingBackupImport.profile.displayName,
           };
+    const nextProfile: LocalVaultProfile = syncDownloadedAt
+      ? {
+          ...profile,
+          remoteVaultId: pendingBackupImport.preview.remoteVaultId,
+          remoteDisplayName: pendingBackupImport.preview.remoteDisplayName,
+          lastRemoteSyncAt: syncDownloadedAt,
+          lastRemoteDownloadAt: syncDownloadedAt,
+        }
+      : profile;
 
-    await saveVaultProfile(profile);
+    await saveVaultProfile(nextProfile);
     await refreshProfiles();
-    setSelectedVaultId(profile.vaultId);
+    setSelectedVaultId(nextProfile.vaultId);
     setVault(pendingBackupImport.vault);
     setCryptoKey(pendingBackupImport.key);
     setSelectedEntryId(null);
     setPendingBackupImport(null);
     setIsCreatingVault(false);
     setView('vault');
+    if (syncDownloadedAt) setLastManualDownloadAt(syncDownloadedAt);
     showToast(mode === 'new' ? 'Respaldo importado como nueva bóveda.' : 'Respaldo importado correctamente.');
   }
 
@@ -579,7 +604,13 @@ function App() {
           lastManualDownloadAt={lastManualDownloadAt}
           vaultUpdatedAt={vault.updatedAt}
           activeProfileName={activeProfile?.displayName ?? 'Bóveda local'}
+          activeProfileVaultId={activeProfile?.vaultId ?? ''}
           activeProfileUpdatedAt={activeProfile?.updatedAt ?? vault.updatedAt}
+          activeProfileRemoteVaultId={activeProfile?.remoteVaultId}
+          activeProfileRemoteDisplayName={activeProfile?.remoteDisplayName}
+          activeProfileLastRemoteSyncAt={activeProfile?.lastRemoteSyncAt}
+          activeProfileLastRemoteUploadAt={activeProfile?.lastRemoteUploadAt}
+          activeProfileLastRemoteDownloadAt={activeProfile?.lastRemoteDownloadAt}
           onAutoLockChange={setAutoLockMinutes}
           onCancelBackupImport={handleCancelBackupImport}
           onConfirmBackupImport={(mode) => handleConfirmBackupImport(mode)}
