@@ -1,0 +1,19 @@
+{
+  "name": "Llavero Seguro",
+  "short_name": "Llavero",
+  "description": "Bóveda local cifrada para gestionar contraseñas desde el navegador.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#07111f",
+  "theme_color": "#0f172a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

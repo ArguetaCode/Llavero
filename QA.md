@@ -1,0 +1,129 @@
+# QA Manual - Llavero Seguro
+
+## Primer uso
+
+- Abrir la app en HTTPS o `localhost`.
+- Confirmar que se muestra la pantalla inicial con explicación de contraseña maestra.
+- Crear una bóveda local con nombre de perfil.
+- Intentar crear bóveda con menos de 10 caracteres y validar error.
+- Intentar crear bóveda con confirmación distinta y validar error.
+- Crear bóveda con contraseña maestra válida.
+- Confirmar que la app entra a “Mi llavero”.
+
+## Desbloqueo
+
+- Recargar la página.
+- Confirmar que aparece la selección de bóveda si existe al menos una.
+- Seleccionar una bóveda local.
+- Intentar desbloquear con contraseña incorrecta.
+- Confirmar mensaje claro de contraseña incorrecta.
+- Abrir “¿Olvidaste tu contraseña maestra?” y validar explicación.
+- Desbloquear con contraseña correcta.
+
+## CRUD de contraseñas
+
+- Agregar contraseña con título, usuario y contraseña.
+- Validar error si falta título, usuario o contraseña.
+- Validar URL opcional inválida.
+- Generar contraseña segura desde el formulario.
+- Buscar el registro creado.
+- Abrir detalle, mostrar/ocultar contraseña y copiar usuario/contraseña.
+- Editar un registro y confirmar toast de actualización.
+- Eliminar un registro y confirmar modal destructivo.
+
+## Cambio de contraseña maestra
+
+- Ir a Seguridad.
+- Intentar cambiar con contraseña actual incorrecta.
+- Intentar nueva contraseña menor a 10 caracteres.
+- Intentar confirmación distinta.
+- Cambiar con datos válidos.
+- Bloquear bóveda.
+- Confirmar que la contraseña anterior ya no desbloquea.
+- Confirmar que la nueva contraseña desbloquea.
+
+## Exportación e importación
+
+- Exportar respaldo cifrado.
+- Confirmar nombre `llavero-seguro-backup-YYYY-MM-DD.json`.
+- Abrir el JSON y confirmar que no hay contraseñas en texto plano.
+- Intentar importar JSON corrupto.
+- Intentar importar respaldo con contraseña incorrecta.
+- Importar respaldo correcto.
+- Confirmar modal antes de reemplazar bóveda local.
+- Importar respaldo como nueva bóveda local.
+- Confirmar que la bóveda queda desbloqueada y en VaultPage.
+
+## Multiusuario local
+
+- Crear dos bóvedas locales: A y B.
+- Desbloquear bóveda A y crear registros falsos.
+- Bloquear o cambiar de bóveda.
+- Desbloquear bóveda B y confirmar que no aparecen datos de A.
+- Crear registros falsos en B.
+- Volver a A y confirmar que no aparecen datos de B.
+- Exportar bóveda A.
+- Importar bóveda A como nueva bóveda local.
+- Eliminar una bóveda y confirmar que las demás siguen disponibles.
+- Revisar IndexedDB y confirmar perfiles separados en `vaultProfiles`.
+
+## Eliminación de bóveda
+
+- Ir a Seguridad > Datos locales.
+- Abrir modal de eliminación.
+- Intentar confirmar sin escribir `ELIMINAR`.
+- Confirmar escribiendo `ELIMINAR`.
+- Validar regreso a SetupPage.
+- Revisar IndexedDB y confirmar que la base local fue eliminada.
+
+## Bloqueo automático
+
+- Configurar bloqueo automático a 1 minuto.
+- Dejar la app sin tocar.
+- Confirmar que vuelve a UnlockPage.
+- Confirmar que no quedan pantallas protegidas visibles.
+
+## Instalación PWA
+
+- Abrir app desde HTTPS.
+- Si usas desarrollo local, crear túnel HTTPS o desplegar `dist/` en hosting estático.
+- En Chrome Android, usar “Agregar a pantalla principal”.
+- En Safari iOS, usar Compartir > Agregar a pantalla de inicio.
+- Abrir en modo standalone.
+- Confirmar navegación, desbloqueo y CRUD básico.
+
+## Prueba con HTTPS
+
+- Ejecutar `npm run build`.
+- Ejecutar `npm run preview` para revisar producción local.
+- Usar hosting HTTPS o túnel HTTPS para teléfono.
+- Confirmar que Web Crypto permite crear y desbloquear bóveda.
+- Confirmar que el manifest se detecta como instalable.
+
+## Actualización de service worker
+
+- Instalar la PWA o abrir el build en HTTPS.
+- Publicar o servir una versión nueva.
+- Confirmar que aparece “Hay una nueva versión disponible. Recarga para actualizar.”
+- Confirmar que no se recarga automáticamente si la bóveda está desbloqueada.
+- Recargar manualmente y confirmar que la app sigue funcionando.
+
+## Revisión de almacenamiento
+
+- Abrir DevTools > Application.
+- Revisar IndexedDB: solo debe existir metadata y `encryptedVault`.
+- Revisar Local Storage: no debe contener secretos.
+- Revisar Session Storage: no debe contener secretos.
+- Revisar Cache Storage: solo debe contener shell/assets públicos, no respaldos ni datos de bóveda.
+- Revisar consola: no debe imprimir contraseña maestra ni contraseñas.
+
+## Checklist móvil
+
+- Probar ancho 360px.
+- Probar ancho 390px.
+- Probar ancho 430px.
+- Validar que bottom navigation no tape botones.
+- Validar que FAB no tape el último registro.
+- Probar Chrome Android.
+- Probar Safari iOS.
+- Probar modo standalone PWA.
