@@ -12,8 +12,11 @@ import { createBackupFileName, createVaultBackup, parseVaultBackupJson } from '.
 import { CURRENT_CRYPTO_METADATA } from './crypto/cryptoMetadata';
 import { decryptVault, deriveKey, encryptVault, generateSalt } from './crypto/cryptoService';
 import { createLocalVaultProfile, cloneProfileAsNewVault } from './storage/vaultProfileHelpers';
-import { deleteVaultProfile, listVaultProfiles, saveVaultProfile, touchVaultProfile } from './storage/vaultStorage';
+import { deleteVaultProfile, getVaultProfile, listVaultProfiles, saveVaultProfile, touchVaultProfile } from './storage/vaultStorage';
 import { auditVault } from './domain/vaultAudit';
+import { fetchRemoteMe, loginRemote, registerRemote, type LoginRemoteInput, type RegisterRemoteInput, type RemoteUser } from './api/authApi';
+import { createRemoteVault, listRemoteVaults, updateRemoteVault, type RemoteVault } from './api/vaultSyncApi';
+import { createRemoteVaultUploadPayload, parseRemoteEncryptedPayload } from './sync/vaultSyncPayload';
 import type { AppView, BackupImportPreview, LocalVaultProfile, PasswordEntry, VaultData } from './domain/types';
 
 const DEFAULT_AUTO_LOCK_MINUTES = 2;
@@ -37,6 +40,11 @@ function App() {
   const [appToast, setAppToast] = useState<ToastMessage | null>(null);
   const [busyMessage, setBusyMessage] = useState('');
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
+  const [remoteUser, setRemoteUser] = useState<RemoteUser | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [remoteVaults, setRemoteVaults] = useState<RemoteVault[]>([]);
+  const [lastManualUploadAt, setLastManualUploadAt] = useState<string | null>(null);
+  const [lastManualDownloadAt, setLastManualDownloadAt] = useState<string | null>(null);
   const [pendingBackupImport, setPendingBackupImport] = useState<{
     profile: LocalVaultProfile;
     vault: VaultData;
@@ -112,6 +120,105 @@ function App() {
       registration?.waiting?.postMessage({ type: 'SKIP_WAITING' });
       window.location.reload();
     });
+  }
+
+  async function handleRegisterRemote(input: RegisterRemoteInput): Promise<void> {
+    const response = await registerRemote(input);
+    setRemoteUser(response.user);
+    setAccessToken(response.token);
+    showToast('Cuenta remota creada. Sincronización manual disponible.');
+  }
+
+  async function handleLoginRemote(input: LoginRemoteInput): Promise<void> {
+    const response = await loginRemote(input);
+    setRemoteUser(response.user);
+    setAccessToken(response.token);
+    showToast('Sesión remota iniciada.');
+  }
+
+  function handleLogoutRemote(): void {
+    setRemoteUser(null);
+    setAccessToken(null);
+    setRemoteVaults([]);
+    setLastManualUploadAt(null);
+    setLastManualDownloadAt(null);
+    showToast('Sesión remota cerrada.');
+  }
+
+  async function handleFetchRemoteMe(): Promise<void> {
+    if (!accessToken) throw new Error('Inicia sesión remota primero.');
+    const user = await fetchRemoteMe(accessToken);
+    setRemoteUser(user);
+  }
+
+  async function handleListRemoteVaults(): Promise<RemoteVault[]> {
+    if (!accessToken) throw new Error('Inicia sesión remota primero.');
+    const vaults = await listRemoteVaults(accessToken);
+    setRemoteVaults(vaults);
+    return vaults;
+  }
+
+  async function handleUploadActiveVault(): Promise<void> {
+    if (!accessToken) throw new Error('Inicia sesión remota primero.');
+    if (!activeProfile) throw new Error('Selecciona y desbloquea una bóveda local.');
+
+    const storedProfile = await getVaultProfile(activeProfile.vaultId);
+    if (!storedProfile) throw new Error('No se encontró la bóveda local activa.');
+
+    const payload = createRemoteVaultUploadPayload(storedProfile);
+    const latestRemoteVaults = await listRemoteVaults(accessToken);
+    const existing = latestRemoteVaults.find((remoteVault) => remoteVault.clientVaultId === payload.clientVaultId);
+    const saved = existing
+      ? await updateRemoteVault(accessToken, existing.id, payload)
+      : await createRemoteVault(accessToken, payload);
+    const nextVaults = existing
+      ? latestRemoteVaults.map((remoteVault) => (remoteVault.id === saved.id ? saved : remoteVault))
+      : [saved, ...latestRemoteVaults];
+
+    setRemoteVaults(nextVaults);
+    setLastManualUploadAt(new Date().toISOString());
+    showToast(existing ? 'Bóveda remota actualizada.' : 'Bóveda activa subida cifrada.');
+  }
+
+  async function handleValidateRemoteVaultImport(remoteVaultId: string, masterPassword: string): Promise<BackupImportPreview> {
+    if (!accessToken) throw new Error('Inicia sesión remota primero.');
+    const latestRemoteVaults = remoteVaults.length ? remoteVaults : await handleListRemoteVaults();
+    const remoteVault = latestRemoteVaults.find((candidate) => candidate.id === remoteVaultId);
+    if (!remoteVault) throw new Error('Selecciona una bóveda remota válida.');
+
+    const { backup, errors } = parseRemoteEncryptedPayload(remoteVault.encryptedPayload);
+    if (errors.length) throw new Error(errors[0]);
+
+    const key = await deriveKey(masterPassword, backup.salt);
+    let importedVault: VaultData;
+    try {
+      importedVault = await decryptVault(backup.encryptedVault, key, backup.iv);
+    } catch {
+      throw new Error('No se pudo descifrar. Verifica la contraseña maestra de esa bóveda.');
+    }
+    if (!Array.isArray(importedVault.entries) || typeof importedVault.updatedAt !== 'string') {
+      throw new Error('La bóveda remota descifrada no tiene datos válidos.');
+    }
+
+    const profile = createLocalVaultProfile({
+      vaultId: backup.vaultId,
+      displayName: backup.displayName ?? remoteVault.displayName,
+      salt: backup.salt,
+      iv: backup.iv,
+      encryptedVault: backup.encryptedVault,
+      createdAt: backup.createdAt,
+      updatedAt: backup.updatedAt,
+    });
+    const preview: BackupImportPreview = {
+      exportedAt: backup.exportedAt,
+      itemCount: importedVault.entries.length,
+      schemaVersion: backup.schemaVersion,
+      displayName: profile.displayName,
+    };
+
+    setPendingBackupImport({ profile, vault: importedVault, key, preview });
+    setLastManualDownloadAt(new Date().toISOString());
+    return preview;
   }
 
   async function persistVault(nextVault: VaultData, key = cryptoKey): Promise<void> {
@@ -465,8 +572,14 @@ function App() {
           audit={audit}
           entries={vault.entries}
           pendingImportPreview={pendingBackupImport?.preview ?? null}
+          remoteUser={remoteUser}
+          remoteVaults={remoteVaults}
+          isRemoteAuthenticated={Boolean(accessToken && remoteUser)}
+          lastManualUploadAt={lastManualUploadAt}
+          lastManualDownloadAt={lastManualDownloadAt}
           vaultUpdatedAt={vault.updatedAt}
           activeProfileName={activeProfile?.displayName ?? 'Bóveda local'}
+          activeProfileUpdatedAt={activeProfile?.updatedAt ?? vault.updatedAt}
           onAutoLockChange={setAutoLockMinutes}
           onCancelBackupImport={handleCancelBackupImport}
           onConfirmBackupImport={(mode) => handleConfirmBackupImport(mode)}
@@ -474,7 +587,14 @@ function App() {
             activeProfile ? handleDeleteLocalVault(activeProfile.vaultId, confirmation) : Promise.resolve()
           }
           onExportBackup={handleExportBackup}
+          onFetchRemoteMe={handleFetchRemoteMe}
+          onListRemoteVaults={handleListRemoteVaults}
+          onLoginRemote={handleLoginRemote}
+          onLogoutRemote={handleLogoutRemote}
+          onRegisterRemote={handleRegisterRemote}
+          onUploadActiveVault={handleUploadActiveVault}
           onChangeMasterPassword={handleChangeMasterPassword}
+          onValidateRemoteVaultImport={handleValidateRemoteVaultImport}
           onValidateBackupImport={handleValidateBackupImport}
           onSwitchVault={handleSwitchVault}
           onLock={handleLock}

@@ -25,7 +25,7 @@ Para probar desde un teléfono en la misma red, recuerda que el cifrado usa Web 
 
 ## Multiusuario local
 
-Llavero Seguro permite crear varias bóvedas locales en el mismo navegador. Esto no es multiusuario con servidor todavía: no hay login remoto, backend ni sincronización. Por ahora todo vive en IndexedDB dentro del navegador local.
+Llavero Seguro permite crear varias bóvedas locales en el mismo navegador. El modo local sigue funcionando sin backend y por ahora todo vive en IndexedDB dentro del navegador local salvo cuando el usuario decide usar sincronización manual cifrada.
 
 - Cada bóveda local tiene su propio nombre, salt, IV, metadata criptográfica y contraseña maestra.
 - Cada bóveda local se desbloquea por separado y sus registros no se mezclan con los de otra bóveda.
@@ -34,18 +34,50 @@ Llavero Seguro permite crear varias bóvedas locales en el mismo navegador. Esto
 - Eliminar una bóveda local elimina únicamente ese perfil local de este navegador; las demás bóvedas locales no se afectan.
 - En una fase futura, el backend permitiría cuentas reales, multiusuario con servidor y sincronización entre dispositivos.
 
-## Backend de sincronización cifrada
+## Backend y sincronización cifrada
 
-La carpeta `backend/` contiene la base Spring Boot para sincronización cifrada futura. El frontend actual sigue funcionando en modo local con IndexedDB y no está conectado al backend todavía.
+La carpeta `backend/` contiene el servicio Spring Boot para cuentas remotas y sincronización manual cifrada. El frontend actual sigue funcionando en modo local con IndexedDB aunque el backend esté apagado.
 
 - El backend guarda usuarios remotos, auditoría básica y bóvedas remotas como blobs cifrados.
 - El backend no recibe la contraseña maestra, no recibe bóvedas descifradas y no descifra `encryptedPayload`.
 - La autenticación remota usa contraseña de cuenta remota con hash BCrypt y JWT stateless para esta fase.
 - La fase 2.0.1 agrega Maven Wrapper, Dockerfile, Compose con API opcional, tests backend ampliados, ejemplos HTTP y CI básico.
 - PostgreSQL se levanta con Docker Compose en `backend/docker-compose.yml`.
-- La integración con la UI, almacenamiento de token y sincronización real quedan para fase 2.1.
+- La fase 2.1 conecta la UI a login remoto y sincronización manual desde Seguridad.
+- El access token se guarda solo en memoria de React. Si recargas la app, debes iniciar sesión remota otra vez.
+- La resolución automática de conflictos y el refresh token seguro quedan para una fase posterior.
 
 Ver instrucciones completas en [backend/README.md](backend/README.md).
+
+### Configurar frontend para backend
+
+Crea un `.env` local basado en `.env.example`:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+Levanta backend y frontend:
+
+```bash
+cd backend
+docker compose up --build backend
+```
+
+```bash
+npm run dev
+```
+
+Desde la app:
+
+1. Abrir Seguridad > Cuenta remota.
+2. Crear cuenta remota o iniciar sesión.
+3. Usar Seguridad > Sincronización cifrada > Subir bóveda activa.
+4. Usar Ver bóvedas remotas para listar blobs cifrados.
+5. Seleccionar una bóveda remota, ingresar su contraseña maestra local y descargar.
+6. Confirmar si se importa como nueva bóveda local o reemplaza la bóveda activa.
+
+La contraseña maestra y la bóveda descifrada nunca se envían al backend.
 
 ## Compilación
 
@@ -128,6 +160,8 @@ Antes de compartir una build de prueba, sigue [RELEASE_CHECKLIST.md](RELEASE_CHE
 - Copiado de usuario y contraseña desde el detalle.
 - Panel de seguridad con conteos de contraseñas débiles y repetidas.
 - Exportación e importación de respaldo cifrado.
+- Cuenta remota opcional con token en memoria.
+- Sincronización manual de bóveda activa como blob cifrado.
 - Eliminación de la bóveda local activa sin borrar otros perfiles locales.
 - Cambio de contraseña maestra con re-cifrado completo de la bóveda.
 - Auditoría local de contraseñas débiles, repetidas, favoritas y registros incompletos.
@@ -135,7 +169,7 @@ Antes de compartir una build de prueba, sigue [RELEASE_CHECKLIST.md](RELEASE_CHE
 
 ## Limitaciones
 
-- No hay backend ni sincronización entre dispositivos.
+- No hay sincronización automática ni resolución automática de conflictos.
 - La recuperación de bóveda no existe si se pierde la contraseña maestra.
 - El almacenamiento depende del navegador y del dispositivo.
 - No es todavía un gestor de contraseñas auditado para producción.
@@ -148,6 +182,7 @@ Antes de compartir una build de prueba, sigue [RELEASE_CHECKLIST.md](RELEASE_CHE
 - Cada guardado usa un IV aleatorio nuevo.
 - IndexedDB guarda solo `salt`, `iv`, bóveda cifrada, fecha de creación y versión de esquema.
 - No se usan `localStorage` ni `sessionStorage` para datos sensibles.
+- El token remoto se mantiene solo en memoria y se pierde al recargar.
 - La bóveda descifrada vive en memoria solo mientras está desbloqueada.
 - El bloqueo manual y automático limpia el estado sensible de la app lo mejor posible desde JavaScript.
 - Los respaldos exportados contienen solo metadata no sensible y la bóveda cifrada.
@@ -219,7 +254,7 @@ El checklist completo de QA manual está en [QA.md](QA.md). Incluye primer uso, 
 
 - No hay recuperación de contraseña maestra.
 - No hay auditoría externa de seguridad.
-- No hay sincronización, backup remoto ni multi-dispositivo.
+- La sincronización remota es manual y experimental.
 - La app todavía no está auditada para producción.
 - El portapapeles depende de permisos y comportamiento del navegador.
 - Una PWA no puede garantizar siempre la limpieza automática del portapapeles.

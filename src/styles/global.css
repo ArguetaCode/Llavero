@@ -764,6 +764,29 @@ h1 {
   border-color: rgba(251, 113, 133, 0.65);
 }
 
+.remote-vault-list {
+  display: grid;
+  gap: 10px;
+}
+
+.remote-vault-item {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.remote-vault-item strong {
+  color: var(--text);
+}
+
+.remote-vault-item span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .nav-item {
   display: grid;
   place-items: center;

@@ -73,6 +73,26 @@
 - Eliminar una bóveda y confirmar que las demás siguen existiendo.
 - Revisar IndexedDB y confirmar perfiles separados en `vaultProfiles`.
 
+## Cuenta remota y sincronización manual
+
+- Levantar backend con `cd backend && docker compose up --build backend`.
+- Configurar `VITE_API_BASE_URL=http://localhost:8080`.
+- Crear una bóveda local A y agregar un registro falso.
+- Ir a Seguridad > Cuenta remota.
+- Registrar usuario remoto con email, nombre y contraseña de cuenta remota.
+- Confirmar que la UI aclara que no es la contraseña maestra.
+- Cerrar sesión remota.
+- Iniciar sesión remota con el usuario creado.
+- Subir bóveda activa desde “Sincronización cifrada”.
+- Ver bóvedas remotas y confirmar que aparece solo nombre, fecha y versión.
+- Confirmar que no se muestra `encryptedPayload` completo.
+- Descargar bóveda remota con contraseña maestra incorrecta y validar error.
+- Descargar bóveda remota con contraseña maestra correcta.
+- Importar como nueva bóveda local y confirmar que se crea un perfil separado.
+- Descargar otra vez y reemplazar bóveda activa solo después de confirmar.
+- Apagar backend y confirmar que el modo local sigue funcionando.
+- Revisar Network y confirmar que no se envía contraseña maestra ni bóveda descifrada.
+
 ## Eliminación de bóveda
 
 - Ir a Seguridad > Datos locales.
@@ -121,6 +141,7 @@
 - Revisar IndexedDB: solo debe existir metadata y `encryptedVault`.
 - Revisar Local Storage: no debe contener secretos.
 - Revisar Session Storage: no debe contener secretos.
+- Confirmar que el access token remoto no queda en Local Storage ni Session Storage.
 - Revisar Cache Storage: solo debe contener shell/assets públicos, no respaldos ni datos de bóveda.
 - Revisar consola: no debe imprimir contraseña maestra ni contraseñas.
 
