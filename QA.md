@@ -56,15 +56,21 @@
 
 ## Multiusuario local
 
-- Crear dos bóvedas locales: A y B.
-- Desbloquear bóveda A y crear registros falsos.
-- Bloquear o cambiar de bóveda.
+- Crear bóveda A.
+- Agregar registro falso en bóveda A.
+- Bloquear.
+- Crear bóveda B.
+- Agregar registro falso en bóveda B.
+- Bloquear.
+- Desbloquear bóveda A y confirmar que no aparecen datos de B.
+- Bloquear.
 - Desbloquear bóveda B y confirmar que no aparecen datos de A.
-- Crear registros falsos en B.
-- Volver a A y confirmar que no aparecen datos de B.
+- Bloquear.
+- Desbloquear bóveda A.
 - Exportar bóveda A.
 - Importar bóveda A como nueva bóveda local.
-- Eliminar una bóveda y confirmar que las demás siguen disponibles.
+- Confirmar que se crea un perfil separado.
+- Eliminar una bóveda y confirmar que las demás siguen existiendo.
 - Revisar IndexedDB y confirmar perfiles separados en `vaultProfiles`.
 
 ## Eliminación de bóveda
@@ -73,8 +79,9 @@
 - Abrir modal de eliminación.
 - Intentar confirmar sin escribir `ELIMINAR`.
 - Confirmar escribiendo `ELIMINAR`.
-- Validar regreso a SetupPage.
-- Revisar IndexedDB y confirmar que la base local fue eliminada.
+- Validar regreso al selector de bóvedas si quedan otros perfiles locales.
+- Validar regreso a SetupPage solo si no queda ninguna bóveda local.
+- Revisar IndexedDB y confirmar que se eliminó solo el perfil seleccionado de `vaultProfiles`.
 
 ## Bloqueo automático
 

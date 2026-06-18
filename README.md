@@ -25,13 +25,14 @@ Para probar desde un teléfono en la misma red, recuerda que el cifrado usa Web 
 
 ## Multiusuario local
 
-Llavero Seguro permite crear varias bóvedas locales en el mismo navegador. Todavía no hay cuentas remotas, login remoto, backend ni sincronización.
+Llavero Seguro permite crear varias bóvedas locales en el mismo navegador. Esto no es multiusuario con servidor todavía: no hay login remoto, backend ni sincronización. Por ahora todo vive en IndexedDB dentro del navegador local.
 
 - Cada bóveda local tiene su propio nombre, salt, IV, metadata criptográfica y contraseña maestra.
-- Los registros de una bóveda no se mezclan con otra.
+- Cada bóveda local se desbloquea por separado y sus registros no se mezclan con los de otra bóveda.
 - Exportar respaldo exporta únicamente la bóveda activa.
-- Importar respaldo puede crear una bóveda local nueva o reemplazar la bóveda activa.
-- En una fase futura, el backend permitiría multiusuario real y sincronización entre dispositivos.
+- Importar respaldo puede crear una bóveda local nueva con un perfil separado o reemplazar la bóveda activa después de confirmar.
+- Eliminar una bóveda local elimina únicamente ese perfil local de este navegador; las demás bóvedas locales no se afectan.
+- En una fase futura, el backend permitiría cuentas reales, multiusuario con servidor y sincronización entre dispositivos.
 
 ## Compilación
 
@@ -114,7 +115,7 @@ Antes de compartir una build de prueba, sigue [RELEASE_CHECKLIST.md](RELEASE_CHE
 - Copiado de usuario y contraseña desde el detalle.
 - Panel de seguridad con conteos de contraseñas débiles y repetidas.
 - Exportación e importación de respaldo cifrado.
-- Eliminación completa de la bóveda local.
+- Eliminación de la bóveda local activa sin borrar otros perfiles locales.
 - Cambio de contraseña maestra con re-cifrado completo de la bóveda.
 - Auditoría local de contraseñas débiles, repetidas, favoritas y registros incompletos.
 - Manifest y service worker básico para instalación como PWA.
@@ -166,16 +167,16 @@ Desde la pestaña Seguridad puedes usar **Exportar respaldo cifrado** para desca
 llavero-seguro-backup-YYYY-MM-DD.json
 ```
 
-Ese archivo incluye `appName`, `schemaVersion`, `exportedAt`, `salt`, `iv` y `encryptedVault`. No incluye contraseñas en texto plano.
+Ese archivo incluye metadata como `vaultId`, `displayName`, `appName`, `schemaVersion`, `exportedAt`, `salt`, `iv` y `encryptedVault`. No incluye contraseñas en texto plano.
 
 Para importar un respaldo:
 
 1. Abrir Seguridad > Respaldo.
 2. Seleccionar el archivo `.json`.
 3. Ingresar la contraseña maestra con la que se creó ese respaldo.
-4. Confirmar el reemplazo de la bóveda local.
+4. Confirmar si se importará como nueva bóveda local o si reemplazará la bóveda local activa.
 
-Importar un respaldo reemplaza la bóveda local actual. Si no tienes la contraseña maestra correcta, el respaldo no se puede descifrar ni recuperar.
+Importar un respaldo como nueva bóveda crea un perfil local separado. Reemplazar un respaldo solo afecta la bóveda local activa. Si no tienes la contraseña maestra correcta, el respaldo no se puede descifrar ni recuperar.
 
 ## Validación manual
 

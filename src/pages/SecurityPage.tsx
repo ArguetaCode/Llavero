@@ -331,7 +331,9 @@ export function SecurityPage({
 
       <section className="settings-panel settings-section">
         <h2>Datos locales</h2>
-        <p className="muted">Eliminar la bóveda borra la base IndexedDB local de este navegador.</p>
+        <p className="muted">
+          Esto eliminará únicamente la bóveda local activa de este navegador. Las demás bóvedas locales no serán afectadas.
+        </p>
         <button className="danger-button full" type="button" onClick={() => setIsDeleteModalOpen(true)}>
           Eliminar bóveda local
         </button>
@@ -393,7 +395,10 @@ export function SecurityPage({
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
           <div className="modal-panel">
             <h2 id="deleteTitle">Eliminar bóveda local</h2>
-            <p>Esta acción no se puede deshacer. Escribe ELIMINAR para borrar la bóveda local de este navegador.</p>
+            <p>
+              Esta acción no se puede deshacer. Escribe ELIMINAR para borrar únicamente la bóveda local activa de este
+              navegador.
+            </p>
             <label className="field" htmlFor="deleteConfirmation">
               <span>Confirmación</span>
               <input
