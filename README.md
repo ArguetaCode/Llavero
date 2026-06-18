@@ -34,6 +34,19 @@ Llavero Seguro permite crear varias bóvedas locales en el mismo navegador. Esto
 - Eliminar una bóveda local elimina únicamente ese perfil local de este navegador; las demás bóvedas locales no se afectan.
 - En una fase futura, el backend permitiría cuentas reales, multiusuario con servidor y sincronización entre dispositivos.
 
+## Backend de sincronización cifrada
+
+La carpeta `backend/` contiene la base Spring Boot para sincronización cifrada futura. El frontend actual sigue funcionando en modo local con IndexedDB y no está conectado al backend todavía.
+
+- El backend guarda usuarios remotos, auditoría básica y bóvedas remotas como blobs cifrados.
+- El backend no recibe la contraseña maestra, no recibe bóvedas descifradas y no descifra `encryptedPayload`.
+- La autenticación remota usa contraseña de cuenta remota con hash BCrypt y JWT stateless para esta fase.
+- La fase 2.0.1 agrega Maven Wrapper, Dockerfile, Compose con API opcional, tests backend ampliados, ejemplos HTTP y CI básico.
+- PostgreSQL se levanta con Docker Compose en `backend/docker-compose.yml`.
+- La integración con la UI, almacenamiento de token y sincronización real quedan para fase 2.1.
+
+Ver instrucciones completas en [backend/README.md](backend/README.md).
+
 ## Compilación
 
 ```bash

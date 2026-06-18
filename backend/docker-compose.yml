@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: llavero-seguro-postgres
+    environment:
+      POSTGRES_DB: llavero_seguro
+      POSTGRES_USER: llavero_dev
+      POSTGRES_PASSWORD: llavero_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - llavero_seguro_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U llavero_dev -d llavero_seguro"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: llavero-seguro-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://postgres:5432/llavero_seguro
+      DB_USERNAME: llavero_dev
+      DB_PASSWORD: llavero_dev_password
+      JWT_SECRET: dev-only-change-this-secret-at-least-32-bytes
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+    ports:
+      - "8080:8080"
+
+volumes:
+  llavero_seguro_postgres:
