@@ -91,6 +91,68 @@ La app guarda metadata local no sensible por bóveda para evitar duplicados remo
 
 Al subir, si la bóveda local ya conoce su `remoteVaultId`, actualiza esa bóveda remota. Si no, busca una remota con el mismo `clientVaultId`; si tampoco existe, crea una nueva. No hay sincronización automática ni resolución automática de conflictos en esta fase.
 
+### Validación de sincronización manual
+
+Levanta backend y frontend:
+
+```bash
+cd backend
+docker compose up --build backend
+```
+
+```bash
+npm run dev
+```
+
+Flujo manual recomendado:
+
+1. Crear una bóveda local A y agregar registros falsos.
+2. Registrar una cuenta remota desde Seguridad > Cuenta remota.
+3. Iniciar sesión remota.
+4. Subir la bóveda activa desde Seguridad > Sincronización cifrada.
+5. Listar bóvedas remotas.
+6. Descargar con contraseña maestra incorrecta y confirmar error amigable.
+7. Descargar con contraseña maestra correcta.
+8. Importar como nueva bóveda local y confirmar que se crea un perfil separado.
+9. Repetir descarga y reemplazar la bóveda activa escribiendo `REEMPLAZAR`.
+10. Cancelar un reemplazo y confirmar que no cambia nada.
+11. Apagar backend y confirmar que el modo local sigue funcionando.
+
+Smoke test del backend:
+
+```bash
+backend/scripts/smoke-sync.sh
+```
+
+El script usa datos falsos, prueba health, registro, login, creación y listado de bóvedas remotas. No imprime tokens completos.
+
+Revisión DevTools:
+
+- IndexedDB no debe contener access token, contraseña maestra ni bóveda descifrada.
+- Local Storage y Session Storage no deben contener secretos ni token remoto.
+- Cache Storage solo debe contener shell/assets públicos.
+- Network no debe mostrar contraseña maestra ni registros descifrados; `/api/vaults` debe enviar solo el blob cifrado y metadata no sensible.
+- Console no debe imprimir tokens, contraseñas ni payloads completos.
+
+### Probar sincronización desde teléfono
+
+En red local:
+
+```bash
+npm run dev -- --host 0.0.0.0
+```
+
+Configura `VITE_API_BASE_URL` con una URL del backend accesible desde el teléfono. Si usas IP local con HTTP, recuerda que Web Crypto puede bloquear creación/desbloqueo por no ser contexto seguro.
+
+Con Cloudflare Tunnel:
+
+- Crear un túnel HTTPS para el frontend.
+- Crear otro túnel HTTPS para el backend.
+- Configurar `VITE_API_BASE_URL` con la URL HTTPS pública del backend.
+- Configurar `CORS_ALLOWED_ORIGINS` en backend con el origen exacto del frontend.
+
+No abras CORS a cualquier origen en producción.
+
 ## Compilación
 
 ```bash

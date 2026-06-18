@@ -114,6 +114,61 @@
 - Revisar Network y confirmar que no se envía contraseña maestra ni bóveda descifrada.
 - Revisar IndexedDB y confirmar que solo se guarda metadata no sensible de sync: `remoteVaultId`, `remoteDisplayName`, `lastRemoteSyncAt`, `lastRemoteUploadAt`, `lastRemoteDownloadAt`.
 
+## Resultado QA fase 2.1.2
+
+Marca cada punto durante la validacion real de integracion frontend-backend:
+
+- [ ] Probado en escritorio.
+- [ ] Probado en telefono.
+- [ ] Backend encendido.
+- [ ] Backend apagado.
+- [ ] Sync subida.
+- [ ] Sync descarga.
+- [ ] Importacion como nueva boveda.
+- [ ] Reemplazo con confirmacion `REEMPLAZAR`.
+- [ ] Revision de DevTools.
+
+Resultado esperado del flujo real:
+
+- Crear boveda local A y agregar registros falsos mantiene los datos solo en IndexedDB local.
+- Registrar cuenta remota e iniciar sesion no solicita ni envia la contrasena maestra.
+- Subir boveda activa crea o actualiza una boveda remota opaca.
+- Listar bovedas remotas muestra nombre, fecha, `payloadVersion` e indicador de coincidencia, sin mostrar `encryptedPayload` completo.
+- Descargar con contrasena maestra incorrecta muestra error amigable y no crea ni reemplaza perfiles.
+- Descargar con contrasena maestra correcta abre el modal de importacion.
+- Importar como nueva boveda crea un perfil separado y no mezcla datos con la boveda activa anterior.
+- Reemplazar exige revisar nombre/fecha local, nombre/fecha remota y escribir `REEMPLAZAR`.
+- Cancelar el modal no modifica ninguna boveda local.
+- Apagar backend deja inutilizables las acciones remotas, pero desbloqueo, CRUD, bloqueo y selector local siguen funcionando.
+
+Smoke backend automatizable:
+
+- Levantar backend: `cd backend && docker compose up --build backend`.
+- Ejecutar: `backend/scripts/smoke-sync.sh`.
+- El script prueba health, registro, login, creacion de boveda remota y listado.
+- El script usa datos falsos y solo imprime prefijo corto del token.
+
+Revision DevTools esperada:
+
+- IndexedDB: `vaultProfiles` contiene perfiles locales cifrados, metadata criptografica y metadata no sensible de sync; no contiene access token ni contrasena maestra.
+- Local Storage: no contiene access token, contrasena maestra, boveda descifrada ni registros descifrados.
+- Session Storage: no contiene access token, contrasena maestra, boveda descifrada ni registros descifrados.
+- Cache Storage: solo contiene shell/assets publicos de la PWA; no contiene respaldos ni blobs de usuario.
+- Network: requests remotos no incluyen contrasena maestra ni boveda descifrada; `/api/vaults` envia solo `clientVaultId`, `displayName`, `encryptedPayload` y `payloadVersion`.
+- Console: no muestra tokens, contrasena maestra, payloads completos, registros descifrados ni stack traces al usuario.
+
+Notas CORS de desarrollo:
+
+- Docker Compose configura `CORS_ALLOWED_ORIGINS=http://localhost:5173`.
+- Para usar un tunel HTTPS o probar desde telefono, configurar `CORS_ALLOWED_ORIGINS` con el origen exacto del frontend accesible desde ese dispositivo.
+- No usar `*` como origen CORS en produccion.
+
+Prueba en telefono:
+
+- Red local: levantar Vite con `npm run dev -- --host 0.0.0.0` y apuntar `VITE_API_BASE_URL` al backend accesible desde el telefono.
+- Cloudflare Tunnel: crear un tunel para frontend y otro para backend; `VITE_API_BASE_URL` debe usar la URL HTTPS publica del backend.
+- Si el telefono abre una URL HTTP por IP local, Web Crypto puede no funcionar por no ser contexto seguro; usar HTTPS para validar creacion/desbloqueo de boveda.
+
 ## Eliminación de bóveda
 
 - Ir a Seguridad > Datos locales.

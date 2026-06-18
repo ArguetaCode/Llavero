@@ -242,6 +242,28 @@ curl -X DELETE http://localhost:8080/api/vaults/$VAULT_ID \
 
 Tambien hay ejemplos en `http/requests.http`.
 
+## Smoke test de sincronizacion
+
+Con el backend levantado, ejecuta desde la raiz del repo:
+
+```bash
+backend/scripts/smoke-sync.sh
+```
+
+El script usa datos falsos unicos y valida:
+
+- health
+- registro
+- login
+- creacion de boveda remota
+- listado de bovedas remotas
+
+No imprime tokens completos. Si necesitas apuntar a otro host:
+
+```bash
+API_BASE_URL=https://backend-demo.example.com backend/scripts/smoke-sync.sh
+```
+
 ## Esquema inicial
 
 - `users`: perfiles remotos, email unico, hash BCrypt y estado.
