@@ -9,5 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface RemoteVaultRepository extends JpaRepository<RemoteVault, UUID> {
   List<RemoteVault> findAllByUserAndDeletedAtIsNullOrderByUpdatedAtDesc(AppUser user);
 
+  Optional<RemoteVault> findFirstByUserAndDeletedAtIsNullOrderByUpdatedAtDesc(AppUser user);
+
   Optional<RemoteVault> findByIdAndUserAndDeletedAtIsNull(UUID id, AppUser user);
 }

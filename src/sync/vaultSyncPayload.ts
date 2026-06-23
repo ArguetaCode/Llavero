@@ -29,5 +29,5 @@ export function findExistingRemoteVault(profile: LocalVaultProfile, remoteVaults
     if (byRemoteId) return byRemoteId;
   }
 
-  return remoteVaults.find((remoteVault) => remoteVault.clientVaultId === profile.vaultId) ?? null;
+  return remoteVaults.find((remoteVault) => remoteVault.clientVaultId === profile.vaultId) ?? remoteVaults[0] ?? null;
 }

@@ -111,6 +111,8 @@ export function VaultPage({ entries, repeatedCountsByEntryId, onAdd, onOpenEntry
                 ? 'No hay coincidencias con la búsqueda o categoría actual.'
                 : 'Agrega tu primera credencial para guardarla dentro de la bóveda cifrada.'
             }
+            actionLabel={entries.length ? undefined : 'Guardar mi primera contraseña'}
+            onAction={entries.length ? undefined : onAdd}
           />
         )}
       </div>

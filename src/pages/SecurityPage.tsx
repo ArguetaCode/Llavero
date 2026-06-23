@@ -36,8 +36,8 @@ interface SecurityPageProps {
   onLoginRemote: (input: LoginRemoteInput) => Promise<void>;
   onLogoutRemote: () => void;
   onRegisterRemote: (input: RegisterRemoteInput) => Promise<void>;
-  onUploadActiveVault: () => Promise<void>;
   onLock: () => void;
+  onHome: () => void;
   onSwitchVault: () => void;
   onValidateRemoteVaultImport: (remoteVaultId: string, masterPassword: string) => Promise<BackupImportPreview>;
   onValidateBackupImport: (file: File, masterPassword: string) => Promise<BackupImportPreview>;
@@ -73,8 +73,8 @@ export function SecurityPage({
   onLoginRemote,
   onLogoutRemote,
   onRegisterRemote,
-  onUploadActiveVault,
   onLock,
+  onHome,
   onSwitchVault,
   onValidateRemoteVaultImport,
   onValidateBackupImport,
@@ -303,19 +303,6 @@ export function SecurityPage({
     }
   }
 
-  async function handleUploadActiveVault(): Promise<void> {
-    setRemoteMessage(null);
-    setIsWorking(true);
-    try {
-      await onUploadActiveVault();
-      setRemoteMessage({ type: 'success', message: 'Bóveda activa subida cifrada.' });
-    } catch (error) {
-      setRemoteMessage({ type: 'error', message: error instanceof Error ? error.message : 'No se pudo subir la bóveda cifrada.' });
-    } finally {
-      setIsWorking(false);
-    }
-  }
-
   async function handleListRemoteVaults(): Promise<void> {
     setRemoteMessage(null);
     setIsWorking(true);
@@ -366,6 +353,9 @@ export function SecurityPage({
           <p className="eyebrow">Estado general</p>
           <h1>Seguridad</h1>
         </div>
+        <button className="ghost-button" type="button" onClick={onHome}>
+          ← Inicio
+        </button>
       </header>
 
       <section className="settings-panel settings-section">
@@ -484,7 +474,7 @@ export function SecurityPage({
           <div className="modal-summary">
             <span>Conectado como: {remoteUser.email}</span>
             <span>Nombre: {remoteUser.displayName}</span>
-            <span>La sesión se guarda solo en memoria.</span>
+            <span>La sesión permanece activa en este dispositivo hasta cerrar sesión o vencer.</span>
           </div>
         ) : (
           <form className="form-stack" onSubmit={handleRemoteAuth}>
@@ -546,10 +536,10 @@ export function SecurityPage({
       <section className="settings-panel settings-section">
         <div className="section-heading">
           <h2>Sincronización cifrada</h2>
-          <span className="status-pill">{isRemoteAuthenticated ? 'Manual' : 'No conectado'}</span>
+          <span className="status-pill">{isRemoteAuthenticated ? 'Automática' : 'No conectado'}</span>
         </div>
         <p className="muted">
-          La sincronización es manual. El servidor solo guarda datos cifrados y metadata no sensible.
+          Tu cuenta mantiene una sola bóveda. Al iniciar sesión se compara con este dispositivo y cada cambio posterior se respalda automáticamente.
         </p>
         <div className="modal-summary">
           <span>Estado: {remoteUser ? `Conectado como ${remoteUser.email}` : 'Modo local'}</span>
@@ -558,14 +548,9 @@ export function SecurityPage({
           <span>Última subida local: {formatOptionalDate(activeProfileLastRemoteUploadAt ?? lastManualUploadAt)}</span>
           <span>Última descarga local: {formatOptionalDate(activeProfileLastRemoteDownloadAt ?? lastManualDownloadAt)}</span>
         </div>
-        <div className="modal-actions">
-          <button className="primary-button" type="button" disabled={isWorking || !isRemoteAuthenticated} onClick={handleUploadActiveVault}>
-            Subir bóveda activa
-          </button>
-          <button className="secondary-button" type="button" disabled={isWorking || !isRemoteAuthenticated} onClick={handleListRemoteVaults}>
-            Ver bóvedas remotas
-          </button>
-        </div>
+        <button className="secondary-button full" type="button" disabled={isWorking || !isRemoteAuthenticated} onClick={handleListRemoteVaults}>
+          Comprobar estado remoto
+        </button>
         {remoteVaults.length > 0 && (
           <form className="form-stack import-form" onSubmit={handleValidateRemoteImport}>
             <label className="field" htmlFor="remoteVault">
@@ -682,7 +667,7 @@ export function SecurityPage({
         </div>
         <ul className="plain-list">
           <li>No autocompleta en otras apps.</li>
-          <li>No sincroniza automáticamente entre dispositivos.</li>
+          <li>La sincronización automática requiere una sesión remota activa.</li>
           <li>No recupera la contraseña maestra.</li>
           <li>El backend solo guarda blobs cifrados.</li>
         </ul>

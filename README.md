@@ -45,7 +45,7 @@ La carpeta `backend/` contiene el servicio Spring Boot para cuentas remotas y si
 - PostgreSQL se levanta con Docker Compose en `backend/docker-compose.yml`.
 - La fase 2.1 conecta la UI a login remoto y sincronización manual desde Seguridad.
 - La fase 2.1.1 estabiliza mensajes de error, metadata local de sync y confirmación explícita antes de reemplazar.
-- El access token se guarda solo en memoria de React. Si recargas la app, debes iniciar sesión remota otra vez.
+- El access token se guarda en `localStorage` para conservar la sesión remota en este dispositivo. Se elimina al cerrar sesión, vence en el servidor y no se guarda en IndexedDB.
 - La resolución automática de conflictos y el refresh token seguro quedan para una fase posterior.
 
 Ver instrucciones completas en [backend/README.md](backend/README.md).
@@ -71,13 +71,13 @@ npm run dev
 
 Desde la app:
 
-1. Abrir Seguridad > Cuenta remota.
-2. Crear cuenta remota o iniciar sesión.
-3. Usar Seguridad > Sincronización cifrada > Subir bóveda activa.
-4. Usar Ver bóvedas remotas para listar blobs cifrados.
-5. Seleccionar una bóveda remota, ingresar su contraseña maestra local y descargar.
-6. Confirmar si se importa como nueva bóveda local o reemplaza la bóveda activa.
-7. Para reemplazar, revisar nombre/fecha local, nombre/fecha remota y escribir `REEMPLAZAR`.
+1. En un navegador sin bóvedas locales, crear una cuenta remota o iniciar sesión desde el onboarding.
+2. Si la cuenta ya tiene bóvedas, seleccionar una e importarla con su contraseña maestra.
+3. Si la cuenta es nueva, crear la primera bóveda y confirmar el respaldo cifrado que se ofrece inmediatamente.
+4. También puedes administrar la cuenta y la sincronización manual desde Seguridad.
+5. Usar Seguridad > Sincronización cifrada > Subir bóveda activa para respaldos posteriores.
+6. Usar Ver bóvedas remotas para listar blobs cifrados.
+7. Para reemplazar una bóveda existente desde Seguridad, revisar nombre/fecha local, nombre/fecha remota y escribir `REEMPLAZAR`.
 
 La contraseña maestra y la bóveda descifrada nunca se envían al backend. El servidor guarda solo el blob cifrado (`encryptedPayload`) y metadata no sensible como nombre, versión de payload y fechas.
 
@@ -89,7 +89,7 @@ La app guarda metadata local no sensible por bóveda para evitar duplicados remo
 - `lastRemoteUploadAt`
 - `lastRemoteDownloadAt`
 
-Al subir, si la bóveda local ya conoce su `remoteVaultId`, actualiza esa bóveda remota. Si no, busca una remota con el mismo `clientVaultId`; si tampoco existe, crea una nueva. No hay sincronización automática ni resolución automática de conflictos en esta fase.
+Cada cuenta remota mantiene una sola bóveda activa. Al iniciar sesión, la app compara las fechas de la copia local y remota: sube la local si es más reciente o aplica la remota automáticamente cuando puede descifrarla con la clave que ya está en memoria. Después de vincularla, las altas, ediciones y eliminaciones se respaldan automáticamente mientras la sesión remota siga activa. No hay resolución automática de conflictos simultáneos en esta fase.
 
 ### Validación de sincronización manual
 
@@ -129,7 +129,7 @@ El script usa datos falsos, prueba health, registro, login, creación y listado 
 Revisión DevTools:
 
 - IndexedDB no debe contener access token, contraseña maestra ni bóveda descifrada.
-- Local Storage y Session Storage no deben contener secretos ni token remoto.
+- Local Storage solo debe contener el access token remoto activo. Session Storage no debe contener secretos.
 - Cache Storage solo debe contener shell/assets públicos.
 - Network no debe mostrar contraseña maestra ni registros descifrados; `/api/vaults` debe enviar solo el blob cifrado y metadata no sensible.
 - Console no debe imprimir tokens, contraseñas ni payloads completos.
@@ -226,7 +226,7 @@ Antes de compartir una build de prueba, sigue [RELEASE_CHECKLIST.md](RELEASE_CHE
 - Configuración inicial de contraseña maestra.
 - Derivación de clave con PBKDF2 SHA-256 y salt aleatorio.
 - Cifrado de la bóveda con AES-GCM e IV nuevo por guardado.
-- Persistencia local en IndexedDB sin usar localStorage para datos sensibles.
+- Persistencia de la bóveda cifrada en IndexedDB; `localStorage` solo conserva el access token remoto.
 - Desbloqueo de bóveda por contraseña maestra.
 - Alta, búsqueda, detalle, edición y eliminación de contraseñas.
 - Generador de contraseñas seguras.
@@ -234,7 +234,7 @@ Antes de compartir una build de prueba, sigue [RELEASE_CHECKLIST.md](RELEASE_CHE
 - Copiado de usuario y contraseña desde el detalle.
 - Panel de seguridad con conteos de contraseñas débiles y repetidas.
 - Exportación e importación de respaldo cifrado.
-- Cuenta remota opcional con token en memoria.
+- Cuenta remota opcional con sesión persistente en el dispositivo.
 - Sincronización manual de bóveda activa como blob cifrado, con metadata local no sensible.
 - Eliminación de la bóveda local activa sin borrar otros perfiles locales.
 - Cambio de contraseña maestra con re-cifrado completo de la bóveda.
@@ -243,7 +243,7 @@ Antes de compartir una build de prueba, sigue [RELEASE_CHECKLIST.md](RELEASE_CHE
 
 ## Limitaciones
 
-- No hay sincronización automática ni resolución automática de conflictos.
+- La sincronización automática solo opera sobre bóvedas vinculadas mientras la sesión remota está activa; no hay resolución automática de conflictos.
 - La recuperación de bóveda no existe si se pierde la contraseña maestra.
 - El almacenamiento depende del navegador y del dispositivo.
 - No es todavía un gestor de contraseñas auditado para producción.
@@ -255,9 +255,9 @@ Antes de compartir una build de prueba, sigue [RELEASE_CHECKLIST.md](RELEASE_CHE
 - La clave se deriva con PBKDF2 SHA-256 usando salt aleatorio.
 - Cada guardado usa un IV aleatorio nuevo.
 - IndexedDB guarda solo `salt`, `iv`, bóveda cifrada, fecha de creación y versión de esquema.
-- No se usan `localStorage` ni `sessionStorage` para datos sensibles.
-- El token remoto se mantiene solo en memoria y se pierde al recargar.
-- El token remoto no se guarda en IndexedDB, Local Storage ni Session Storage.
+- `localStorage` solo conserva el access token remoto; nunca guarda la contraseña maestra ni la bóveda descifrada.
+- El token remoto persiste entre aperturas, se elimina al cerrar sesión y vence en el servidor.
+- El token remoto no se guarda en IndexedDB.
 - La bóveda descifrada vive en memoria solo mientras está desbloqueada.
 - El bloqueo manual y automático limpia el estado sensible de la app lo mejor posible desde JavaScript.
 - Los respaldos exportados contienen solo metadata no sensible y la bóveda cifrada.
@@ -318,8 +318,8 @@ Importar un respaldo como nueva bóveda crea un perfil local separado. Reemplaza
 13. Importar respaldo cifrado con contraseña correcta y confirmar antes de reemplazar.
 14. Revisar en DevTools > Application:
     - IndexedDB debe mostrar solo metadata y el bloque cifrado.
-    - Local Storage no debe contener secretos.
-    - Session Storage no debe contener secretos.
+    - Local Storage solo puede contener el access token remoto activo.
+    - Local Storage solo puede contener el access token remoto activo.
 
 ## Checklist de validación
 

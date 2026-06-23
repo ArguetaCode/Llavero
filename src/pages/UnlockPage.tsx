@@ -39,11 +39,12 @@ export function UnlockPage({ profile, onBack, onUnlock }: UnlockPageProps) {
     <main className="auth-screen">
       <section className="auth-panel compact">
         <div className="brand-mark">LS</div>
-        <h1>Desbloquear</h1>
-        <p className="muted">Bóveda local: <strong>{profile.displayName}</strong></p>
+        <p className="eyebrow">Bienvenido de nuevo</p>
+        <h1>Abre tu bóveda</h1>
+        <p className="muted">Estás entrando a <strong>{profile.displayName}</strong>.</p>
         <form className="form-stack" onSubmit={handleSubmit}>
           <button className="ghost-button" type="button" onClick={onBack}>
-            Cambiar bóveda
+            ← Elegir otra bóveda
           </button>
           <SecureField
             id="unlockPassword"
@@ -54,7 +55,7 @@ export function UnlockPage({ profile, onBack, onUnlock }: UnlockPageProps) {
           />
           {error && <p className="form-error">{error}</p>}
           <button className="primary-button" type="submit" disabled={isUnlocking || !masterPassword}>
-            {isUnlocking ? 'Desbloqueando...' : 'Desbloquear'}
+            {isUnlocking ? 'Abriendo...' : 'Abrir mi bóveda'}
           </button>
           <button className="link-button" type="button" onClick={() => setShowRecoveryHelp(true)}>
             ¿Olvidaste tu contraseña maestra?

@@ -75,9 +75,13 @@ describe('vaultSyncPayload', () => {
     expect(result?.id).toBe('remote-2');
   });
 
-  it('returns null when the local vault has no matching remote vault', () => {
+  it('uses the account singleton when the local vault id changed on another device', () => {
     const result = findExistingRemoteVault({ ...profile, vaultId: 'new-vault' }, remoteVaults);
 
-    expect(result).toBeNull();
+    expect(result?.id).toBe('remote-1');
+  });
+
+  it('returns null when the account has no remote vault', () => {
+    expect(findExistingRemoteVault(profile, [])).toBeNull();
   });
 });

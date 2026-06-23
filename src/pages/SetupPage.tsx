@@ -52,14 +52,15 @@ export function SetupPage({ onCreateVault, onBack }: SetupPageProps) {
     <main className="auth-screen">
       <section className="auth-panel">
         <div className="brand-mark">LS</div>
-        <h1>Llavero Seguro</h1>
+        <p className="eyebrow">Último paso</p>
+        <h1>Crea tu bóveda</h1>
         <p className="muted">
-          Tu contraseña maestra abre una bóveda cifrada guardada solo en este navegador. No podemos recuperarla si la pierdes.
+          Elige un nombre y una contraseña maestra. Esta contraseña protege todo tu llavero y nunca sale de tu dispositivo.
         </p>
         <ul className="onboarding-checklist">
-          <li>Recuerda una contraseña maestra de al menos 10 caracteres.</li>
-          <li>Guarda tus datos cifrados localmente en este dispositivo.</li>
-          <li>Exporta respaldos cifrados regularmente desde Seguridad.</li>
+          <li>Usa al menos 10 caracteres fáciles de recordar para ti.</li>
+          <li>Tu contenido siempre se guarda cifrado.</li>
+          <li>Si conectaste tu cuenta, podrás respaldarlo al terminar.</li>
         </ul>
         <form className="form-stack" onSubmit={handleSubmit}>
           {onBack && (
@@ -96,7 +97,7 @@ export function SetupPage({ onCreateVault, onBack }: SetupPageProps) {
           {errors.confirmation && <p className="field-error">{errors.confirmation}</p>}
           {errors.form && <p className="form-error">{errors.form}</p>}
           <button className="primary-button" type="submit" disabled={isSaving}>
-            {isSaving ? 'Creando...' : 'Crear bóveda local'}
+            {isSaving ? 'Protegiendo tu bóveda...' : 'Crear mi bóveda'}
           </button>
         </form>
       </section>

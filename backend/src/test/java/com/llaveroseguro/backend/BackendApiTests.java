@@ -77,6 +77,21 @@ class BackendApiTests {
   }
 
   @Test
+  void keepsOnlyOneActiveVaultPerUser() throws Exception {
+    String token = register("single-vault@example.test", "Single Vault");
+    String firstVaultId = createVault(token, "client-vault-first", "Primera", "ciphertext-first");
+    String secondVaultId = createVault(token, "client-vault-second", "Segunda", "ciphertext-second");
+
+    org.junit.jupiter.api.Assertions.assertEquals(firstVaultId, secondVaultId);
+    mockMvc.perform(get("/api/vaults")
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].clientVaultId").value("client-vault-second"))
+        .andExpect(jsonPath("$[0].encryptedPayload").value("ciphertext-second"));
+  }
+
+  @Test
   void returnsAuthenticatedUserProfile() throws Exception {
     String email = "me@example.test";
     String token = register(email, "Me");

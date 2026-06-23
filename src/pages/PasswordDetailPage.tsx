@@ -97,8 +97,8 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
     return (
       <section className="page">
         <header className="page-header inline">
-          <button className="ghost-button" type="button" onClick={() => setIsEditing(false)}>
-            Atrás
+          <button className="ghost-button" type="button" onClick={onBack}>
+            ← Inicio
           </button>
           <h1>Editar</h1>
         </header>
@@ -154,7 +154,7 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
     <section className="page">
       <header className="page-header inline">
         <button className="ghost-button" type="button" onClick={onBack}>
-          Atrás
+          ← Inicio
         </button>
         <h1>Detalle</h1>
       </header>

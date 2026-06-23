@@ -6,9 +6,9 @@ interface BottomNavProps {
 }
 
 const items: Array<{ view: AppView; label: string; icon: string }> = [
-  { view: 'vault', label: 'Bóveda', icon: '⌂' },
-  { view: 'add', label: 'Agregar', icon: '+' },
-  { view: 'security', label: 'Seguridad', icon: '◌' },
+  { view: 'vault', label: 'Inicio', icon: '⌂' },
+  { view: 'add', label: 'Nueva', icon: '+' },
+  { view: 'security', label: 'Seguridad', icon: '✓' },
 ];
 
 export function BottomNav({ currentView, onNavigate }: BottomNavProps) {

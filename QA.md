@@ -85,7 +85,7 @@
 - Confirmar que la UI aclara que no es la contraseña maestra.
 - Resultado esperado: la app queda conectada y no pide contraseña maestra para la cuenta remota.
 - Cerrar sesión remota.
-- Resultado esperado: se limpian usuario remoto, token en memoria y listado remoto.
+- Resultado esperado: se limpian usuario remoto, token persistido y listado remoto.
 - Iniciar sesión remota con el usuario creado.
 - Probar inicio de sesión con contraseña remota incorrecta.
 - Resultado esperado: mostrar “Credenciales remotas incorrectas.” sin detalle técnico.
@@ -151,8 +151,8 @@ Smoke backend automatizable:
 Revision DevTools esperada:
 
 - IndexedDB: `vaultProfiles` contiene perfiles locales cifrados, metadata criptografica y metadata no sensible de sync; no contiene access token ni contrasena maestra.
-- Local Storage: no contiene access token, contrasena maestra, boveda descifrada ni registros descifrados.
-- Session Storage: no contiene access token, contrasena maestra, boveda descifrada ni registros descifrados.
+- Local Storage: contiene como máximo el access token remoto; no contiene contrasena maestra, boveda descifrada ni registros descifrados.
+- Session Storage: no contiene contrasena maestra, boveda descifrada ni registros descifrados.
 - Cache Storage: solo contiene shell/assets publicos de la PWA; no contiene respaldos ni blobs de usuario.
 - Network: requests remotos no incluyen contrasena maestra ni boveda descifrada; `/api/vaults` envia solo `clientVaultId`, `displayName`, `encryptedPayload` y `payloadVersion`.
 - Console: no muestra tokens, contrasena maestra, payloads completos, registros descifrados ni stack traces al usuario.
@@ -215,9 +215,9 @@ Prueba en telefono:
 
 - Abrir DevTools > Application.
 - Revisar IndexedDB: solo debe existir metadata y `encryptedVault`.
-- Revisar Local Storage: no debe contener secretos.
+- Revisar Local Storage: solo puede contener el access token remoto activo.
 - Revisar Session Storage: no debe contener secretos.
-- Confirmar que el access token remoto no queda en Local Storage ni Session Storage.
+- Confirmar que el access token remoto se elimina de Local Storage al cerrar sesión y no queda en Session Storage.
 - Confirmar que el access token remoto no queda en IndexedDB.
 - Revisar Cache Storage: solo debe contener shell/assets públicos, no respaldos ni datos de bóveda.
 - Revisar consola: no debe imprimir contraseña maestra ni contraseñas.

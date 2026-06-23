@@ -33,8 +33,12 @@ public class RemoteVaultService {
   @Transactional
   public VaultResponse create(AppUser user, VaultRequest request) {
     validatePayloadSize(request.encryptedPayload());
-    RemoteVault vault = new RemoteVault();
-    vault.setUser(user);
+    RemoteVault vault = vaults.findFirstByUserAndDeletedAtIsNullOrderByUpdatedAtDesc(user)
+        .orElseGet(() -> {
+          RemoteVault created = new RemoteVault();
+          created.setUser(user);
+          return created;
+        });
     apply(vault, request);
     return toResponse(vaults.save(vault));
   }

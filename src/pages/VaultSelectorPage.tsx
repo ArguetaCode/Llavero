@@ -4,6 +4,7 @@ import type { BackupImportPreview, LocalVaultProfile } from '../domain/types';
 interface VaultSelectorPageProps {
   profiles: LocalVaultProfile[];
   pendingImportPreview: BackupImportPreview | null;
+  onGoHome: () => void;
   onCreateNew: () => void;
   onDeleteProfile: (vaultId: string, confirmation: string) => Promise<void>;
   onImportBackup: (file: File, masterPassword: string) => Promise<BackupImportPreview>;
@@ -15,6 +16,7 @@ interface VaultSelectorPageProps {
 export function VaultSelectorPage({
   profiles,
   pendingImportPreview,
+  onGoHome,
   onCreateNew,
   onDeleteProfile,
   onImportBackup,
@@ -29,6 +31,7 @@ export function VaultSelectorPage({
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [message, setMessage] = useState('');
   const [isWorking, setIsWorking] = useState(false);
+  const [showImportForm, setShowImportForm] = useState(false);
 
   async function handleImport(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -74,7 +77,15 @@ export function VaultSelectorPage({
     <main className="auth-screen selector-screen">
       <section className="auth-panel selector-panel">
         <div className="brand-mark">LS</div>
-        <h1>Bóvedas locales</h1>
+        <div className="selector-heading">
+          <div>
+            <p className="eyebrow">Elige dónde entrar</p>
+            <h1>Bóvedas locales</h1>
+          </div>
+          <button className="ghost-button" type="button" onClick={onGoHome}>
+            ← Inicio
+          </button>
+        </div>
         <p className="muted">Cada bóveda local tiene su propia contraseña maestra y datos cifrados separados.</p>
 
         <div className="profile-list">
@@ -84,6 +95,7 @@ export function VaultSelectorPage({
                 <strong>{profile.displayName}</strong>
                 <span>Actualizada: {new Date(profile.updatedAt).toLocaleString()}</span>
                 {profile.lastUnlockedAt && <span>Último acceso: {new Date(profile.lastUnlockedAt).toLocaleString()}</span>}
+                <span className="profile-open-label">Abrir bóveda →</span>
               </button>
               <button className="danger-button" type="button" onClick={() => setDeleteVaultId(profile.vaultId)}>
                 Eliminar
@@ -98,34 +110,42 @@ export function VaultSelectorPage({
           )}
         </div>
 
-        <button className="primary-button" type="button" onClick={onCreateNew}>
-          Crear nueva bóveda local
+        {!profiles.length && (
+          <button className="primary-button" type="button" onClick={onCreateNew}>
+            Crear mi bóveda
+          </button>
+        )}
+
+        <button className="link-button" type="button" onClick={() => setShowImportForm((current) => !current)}>
+          {showImportForm ? 'Ocultar importación' : 'Importar un respaldo existente'}
         </button>
 
-        <form className="form-stack import-form" onSubmit={handleImport}>
-          <label className="field" htmlFor="selectorBackupFile">
-            <span>Importar respaldo cifrado</span>
-            <input
-              ref={fileInputRef}
-              id="selectorBackupFile"
-              type="file"
-              accept="application/json,.json"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            />
-          </label>
-          <label className="field" htmlFor="selectorBackupPassword">
-            <span>Contraseña maestra del respaldo</span>
-            <input
-              id="selectorBackupPassword"
-              type="password"
-              value={masterPassword}
-              onChange={(event) => setMasterPassword(event.target.value)}
-            />
-          </label>
-          <button className="secondary-button full" type="submit" disabled={isWorking}>
-            Validar respaldo
-          </button>
-        </form>
+        {showImportForm && (
+          <form className="form-stack import-form" onSubmit={handleImport}>
+            <label className="field" htmlFor="selectorBackupFile">
+              <span>Archivo de respaldo cifrado</span>
+              <input
+                ref={fileInputRef}
+                id="selectorBackupFile"
+                type="file"
+                accept="application/json,.json"
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              />
+            </label>
+            <label className="field" htmlFor="selectorBackupPassword">
+              <span>Contraseña maestra del respaldo</span>
+              <input
+                id="selectorBackupPassword"
+                type="password"
+                value={masterPassword}
+                onChange={(event) => setMasterPassword(event.target.value)}
+              />
+            </label>
+            <button className="secondary-button full" type="submit" disabled={isWorking}>
+              Validar respaldo
+            </button>
+          </form>
+        )}
 
         {message && <p className="form-error">{message}</p>}
       </section>

@@ -75,24 +75,27 @@ export function AddPasswordPage({ onBack, onSave }: AddPasswordPageProps) {
     <section className="page">
       <header className="page-header inline">
         <button className="ghost-button" type="button" onClick={onBack}>
-          Atrás
+          ← Inicio
         </button>
-        <h1>Agregar</h1>
+        <div>
+          <p className="eyebrow">Nueva credencial</p>
+          <h1>Guardar contraseña</h1>
+        </div>
       </header>
       <form className="form-stack" onSubmit={handleSubmit}>
         <label className="field" htmlFor="title">
           <span>Título</span>
-          <input id="title" value={values.title} onChange={(event) => updateValue('title', event.target.value)} />
+          <input id="title" value={values.title} placeholder="Ej. Correo personal" onChange={(event) => updateValue('title', event.target.value)} />
         </label>
         {errors.title && <p className="field-error">{errors.title}</p>}
         <label className="field" htmlFor="website">
           <span>Sitio web</span>
-          <input id="website" value={values.website} onChange={(event) => updateValue('website', event.target.value)} />
+          <input id="website" value={values.website} placeholder="https://ejemplo.com (opcional)" inputMode="url" onChange={(event) => updateValue('website', event.target.value)} />
         </label>
         {errors.website && <p className="field-error">{errors.website}</p>}
         <label className="field" htmlFor="username">
           <span>Usuario</span>
-          <input id="username" value={values.username} onChange={(event) => updateValue('username', event.target.value)} />
+          <input id="username" value={values.username} placeholder="usuario@ejemplo.com" autoComplete="off" onChange={(event) => updateValue('username', event.target.value)} />
         </label>
         {errors.username && <p className="field-error">{errors.username}</p>}
         <SecureField id="password" label="Contraseña" value={values.password} onChange={(value) => updateValue('password', value)} />
@@ -123,7 +126,7 @@ export function AddPasswordPage({ onBack, onSave }: AddPasswordPageProps) {
         </label>
         {errors.form && <p className="form-error">{errors.form}</p>}
         <button className="primary-button" type="submit" disabled={isSaving}>
-          {isSaving ? 'Guardando...' : 'Guardar'}
+          {isSaving ? 'Guardando de forma segura...' : 'Guardar en mi bóveda'}
         </button>
       </form>
     </section>

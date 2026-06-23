@@ -43,6 +43,7 @@ DB_URL=jdbc:postgresql://localhost:5432/llavero_seguro
 DB_USERNAME=llavero_dev
 DB_PASSWORD=llavero_dev_password
 JWT_SECRET=dev-only-change-this-secret-at-least-32-bytes
+JWT_EXPIRATION_MINUTES=10080
 CORS_ALLOWED_ORIGINS=http://localhost:5173
 MAX_ENCRYPTED_PAYLOAD_BYTES=1048576
 ```
