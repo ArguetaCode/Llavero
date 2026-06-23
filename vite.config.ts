@@ -5,5 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     allowedHosts: ['.trycloudflare.com'],
+    proxy: {
+      '/api': 'http://localhost:8080',
+    },
   },
 });

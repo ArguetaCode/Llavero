@@ -272,6 +272,10 @@ export function SecurityPage({
       setRemoteMessage({ type: 'error', message: 'Ingresa un nombre para la cuenta remota.' });
       return;
     }
+    if (remoteMode === 'register' && remotePassword.length < 10) {
+      setRemoteMessage({ type: 'error', message: 'La contraseña de cuenta remota debe tener al menos 10 caracteres.' });
+      return;
+    }
 
     setIsWorking(true);
     try {
@@ -445,6 +449,7 @@ export function SecurityPage({
               autoComplete="new-password"
               onChange={(event) => setNextMasterPassword(event.target.value)}
             />
+            <small className="field-hint">Mínimo 10 caracteres. Esta contraseña abre tu bóveda local.</small>
           </label>
           <label className="field" htmlFor="nextMasterPasswordConfirmation">
             <span>Confirmar nueva contraseña</span>
@@ -512,9 +517,13 @@ export function SecurityPage({
                 id="remotePassword"
                 type="password"
                 value={remotePassword}
+                minLength={remoteMode === 'register' ? 10 : undefined}
                 autoComplete={remoteMode === 'register' ? 'new-password' : 'current-password'}
                 onChange={(event) => setRemotePassword(event.target.value)}
               />
+              {remoteMode === 'register' && (
+                <small className="field-hint">Mínimo 10 caracteres. No es la contraseña maestra de tu bóveda.</small>
+              )}
             </label>
             <button className="primary-button" type="submit" disabled={isWorking}>
               {remoteMode === 'register' ? 'Crear cuenta remota' : 'Iniciar sesión remota'}

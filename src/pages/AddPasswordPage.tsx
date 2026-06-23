@@ -72,35 +72,44 @@ export function AddPasswordPage({ onBack, onSave }: AddPasswordPageProps) {
   }
 
   return (
-    <section className="page">
-      <header className="page-header inline">
-        <button className="ghost-button" type="button" onClick={onBack}>
-          ← Inicio
-        </button>
+    <div className="credential-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="addCredentialTitle">
+      <section className="credential-modal">
+        <div className="sheet-handle" aria-hidden="true" />
+        <header className="credential-modal-header">
         <div>
           <p className="eyebrow">Nueva credencial</p>
-          <h1>Guardar contraseña</h1>
+            <h1 id="addCredentialTitle">Guardar contraseña</h1>
         </div>
+          <button className="sheet-close-button" type="button" aria-label="Cerrar" onClick={onBack}>
+            ×
+          </button>
       </header>
-      <form className="form-stack" onSubmit={handleSubmit}>
+        <form className="form-stack credential-form" onSubmit={handleSubmit}>
         <label className="field" htmlFor="title">
           <span>Título</span>
-          <input id="title" value={values.title} placeholder="Ej. Correo personal" onChange={(event) => updateValue('title', event.target.value)} />
+          <input id="title" value={values.title} placeholder="Correo personal" onChange={(event) => updateValue('title', event.target.value)} />
         </label>
         {errors.title && <p className="field-error">{errors.title}</p>}
         <label className="field" htmlFor="website">
           <span>Sitio web</span>
-          <input id="website" value={values.website} placeholder="https://ejemplo.com (opcional)" inputMode="url" onChange={(event) => updateValue('website', event.target.value)} />
+          <input id="website" value={values.website} placeholder="ejemplo.com (opcional)" inputMode="url" onChange={(event) => updateValue('website', event.target.value)} />
         </label>
         {errors.website && <p className="field-error">{errors.website}</p>}
         <label className="field" htmlFor="username">
           <span>Usuario</span>
-          <input id="username" value={values.username} placeholder="usuario@ejemplo.com" autoComplete="off" onChange={(event) => updateValue('username', event.target.value)} />
+          <input id="username" value={values.username} placeholder="usuario o correo" autoComplete="off" onChange={(event) => updateValue('username', event.target.value)} />
         </label>
         {errors.username && <p className="field-error">{errors.username}</p>}
-        <SecureField id="password" label="Contraseña" value={values.password} onChange={(value) => updateValue('password', value)} />
+        <SecureField
+          id="password"
+          label="Contraseña"
+          value={values.password}
+          placeholder="Escribe o genera una contraseña"
+          onChange={(value) => updateValue('password', value)}
+        />
+        <p className="field-hint">Recomendado: 12+ caracteres, con mayúsculas, números y símbolos.</p>
         {errors.password && <p className="field-error">{errors.password}</p>}
-        <div className="action-row">
+        <div className="action-row password-actions">
           <StrengthBadge strength={strength} />
           <button className="secondary-button" type="button" onClick={() => updateValue('password', generatePassword())}>
             Generar segura
@@ -125,10 +134,16 @@ export function AddPasswordPage({ onBack, onSave }: AddPasswordPageProps) {
           <textarea id="notes" value={values.notes} onChange={(event) => updateValue('notes', event.target.value)} />
         </label>
         {errors.form && <p className="form-error">{errors.form}</p>}
-        <button className="primary-button" type="submit" disabled={isSaving}>
-          {isSaving ? 'Guardando de forma segura...' : 'Guardar en mi bóveda'}
-        </button>
+          <div className="sheet-actions">
+            <button className="secondary-button" type="button" disabled={isSaving} onClick={onBack}>
+              Cancelar
+            </button>
+            <button className="primary-button" type="submit" disabled={isSaving}>
+              {isSaving ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
       </form>
-    </section>
+      </section>
+    </div>
   );
 }

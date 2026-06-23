@@ -1,4 +1,4 @@
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '');
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 const DEFAULT_TIMEOUT_MS = 10000;
 
 export class ApiError extends Error {
@@ -78,6 +78,7 @@ async function readErrorMessage(response: Response, path: string): Promise<strin
 
   try {
     const body = (await response.json()) as ErrorResponse;
+    if (body.message && response.status === 400) return body.message;
     if (body.message && response.status >= 400 && response.status < 500) return fallback;
   } catch {
     // Use status-based fallback below.

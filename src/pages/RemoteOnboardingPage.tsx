@@ -36,6 +36,12 @@ export function RemoteOnboardingPage({
   const [masterPassword, setMasterPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isWorking, setIsWorking] = useState(false);
+  const isRegisterMode = mode === 'register';
+  const trimmedEmail = email.trim();
+  const trimmedDisplayName = displayName.trim();
+  const canSubmit = isRegisterMode
+    ? Boolean(trimmedDisplayName && trimmedEmail && password.length >= 10)
+    : Boolean(trimmedEmail && password);
 
   useEffect(() => {
     if (remoteVaults.length === 1) setSelectedRemoteVaultId(remoteVaults[0].id);
@@ -45,20 +51,24 @@ export function RemoteOnboardingPage({
     event.preventDefault();
     setMessage('');
 
-    if (!email.trim() || !password) {
+    if (!trimmedEmail || !password) {
       setMessage('Ingresa email y contraseña de cuenta remota.');
       return;
     }
-    if (mode === 'register' && !displayName.trim()) {
+    if (isRegisterMode && !trimmedDisplayName) {
       setMessage('Ingresa tu nombre para crear la cuenta.');
+      return;
+    }
+    if (isRegisterMode && password.length < 10) {
+      setMessage('La contraseña de cuenta remota debe tener al menos 10 caracteres.');
       return;
     }
 
     setIsWorking(true);
     try {
-      const vaults = mode === 'register'
-        ? await onRegister({ email, displayName, password })
-        : await onLogin({ email, password });
+      const vaults = isRegisterMode
+        ? await onRegister({ email: trimmedEmail, displayName: trimmedDisplayName, password })
+        : await onLogin({ email: trimmedEmail, password });
       setPassword('');
       if (vaults.length === 0) onContinueWithNewVault();
     } catch (error) {
@@ -181,23 +191,47 @@ export function RemoteOnboardingPage({
           Crea una cuenta o inicia sesión. El servidor solo recibirá bóvedas cifradas; tu contraseña maestra nunca se envía.
         </p>
         <div className="auth-mode-switch" role="group" aria-label="Tipo de acceso">
-          <button className={mode === 'login' ? 'chip active' : 'chip'} type="button" onClick={() => setMode('login')}>
+          <button className={mode === 'login' ? 'chip active' : 'chip'} type="button" onClick={() => {
+            setMode('login');
+            setMessage('');
+          }}>
             Iniciar sesión
           </button>
-          <button className={mode === 'register' ? 'chip active' : 'chip'} type="button" onClick={() => setMode('register')}>
+          <button className={mode === 'register' ? 'chip active' : 'chip'} type="button" onClick={() => {
+            setMode('register');
+            setMessage('');
+          }}>
             Crear cuenta
           </button>
+        </div>
+        <div className="guided-note">
+          {isRegisterMode
+            ? 'Crea una cuenta para respaldar bóvedas cifradas entre dispositivos.'
+            : 'Si ya tienes cuenta, entra para recuperar o sincronizar tus bóvedas.'}
         </div>
         <form className="form-stack" onSubmit={handleAuth}>
           {mode === 'register' && (
             <label className="field" htmlFor="onboardingDisplayName">
               <span>Nombre</span>
-              <input id="onboardingDisplayName" value={displayName} autoComplete="name" onChange={(event) => setDisplayName(event.target.value)} />
+              <input
+                id="onboardingDisplayName"
+                value={displayName}
+                autoComplete="name"
+                placeholder="Ej. Mefi"
+                onChange={(event) => setDisplayName(event.target.value)}
+              />
             </label>
           )}
           <label className="field" htmlFor="onboardingEmail">
             <span>Email</span>
-            <input id="onboardingEmail" type="email" value={email} autoComplete="email" onChange={(event) => setEmail(event.target.value)} />
+            <input
+              id="onboardingEmail"
+              type="email"
+              value={email}
+              autoComplete="email"
+              placeholder="tu@email.com"
+              onChange={(event) => setEmail(event.target.value)}
+            />
           </label>
           <label className="field" htmlFor="onboardingRemotePassword">
             <span>Contraseña de cuenta remota</span>
@@ -205,12 +239,14 @@ export function RemoteOnboardingPage({
               id="onboardingRemotePassword"
               type="password"
               value={password}
+              minLength={isRegisterMode ? 10 : undefined}
               autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
               onChange={(event) => setPassword(event.target.value)}
             />
+            {isRegisterMode && <small className="field-hint">Mínimo 10 caracteres. No es la contraseña maestra de tu bóveda.</small>}
           </label>
           {message && <p className="form-error">{message}</p>}
-          <button className="primary-button" type="submit" disabled={isWorking}>
+          <button className="primary-button" type="submit" disabled={isWorking || !canSubmit}>
             {isWorking ? 'Conectando...' : mode === 'register' ? 'Crear cuenta y continuar' : 'Iniciar sesión'}
           </button>
         </form>

@@ -95,14 +95,19 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
 
   if (isEditing) {
     return (
-      <section className="page">
-        <header className="page-header inline">
-          <button className="ghost-button" type="button" onClick={onBack}>
-            ← Inicio
-          </button>
-          <h1>Editar</h1>
+      <div className="credential-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="editCredentialTitle">
+        <section className="credential-modal">
+          <div className="sheet-handle" aria-hidden="true" />
+          <header className="credential-modal-header">
+            <div>
+              <p className="eyebrow">Editar credencial</p>
+              <h1 id="editCredentialTitle">Editar</h1>
+            </div>
+            <button className="sheet-close-button" type="button" aria-label="Cerrar" onClick={onBack}>
+              ×
+            </button>
         </header>
-        <form className="form-stack" onSubmit={handleSave}>
+          <form className="form-stack credential-form" onSubmit={handleSave}>
           <label className="field" htmlFor="editTitle">
             <span>Título</span>
             <input id="editTitle" value={values.title} onChange={(event) => updateValue('title', event.target.value)} />
@@ -118,7 +123,14 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
             <input id="editUsername" value={values.username} onChange={(event) => updateValue('username', event.target.value)} />
           </label>
           {errors.username && <p className="field-error">{errors.username}</p>}
-          <SecureField id="editPassword" label="Contraseña" value={values.password} onChange={(value) => updateValue('password', value)} />
+          <SecureField
+            id="editPassword"
+            label="Contraseña"
+            value={values.password}
+            placeholder="Escribe o genera una contraseña"
+            onChange={(value) => updateValue('password', value)}
+          />
+          <p className="field-hint">Recomendado: 12+ caracteres, con mayúsculas, números y símbolos.</p>
           {errors.password && <p className="field-error">{errors.password}</p>}
           <button className="secondary-button full" type="button" onClick={() => updateValue('password', generatePassword())}>
             Regenerar contraseña
@@ -142,23 +154,34 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
             <textarea id="editNotes" value={values.notes} onChange={(event) => updateValue('notes', event.target.value)} />
           </label>
           {errors.form && <p className="form-error">{errors.form}</p>}
-          <button className="primary-button" type="submit">
-            Guardar cambios
-          </button>
+            <div className="sheet-actions">
+              <button className="secondary-button" type="button" onClick={() => setIsEditing(false)}>
+                Cancelar
+              </button>
+              <button className="primary-button" type="submit">
+                Guardar
+              </button>
+            </div>
         </form>
-      </section>
+        </section>
+      </div>
     );
   }
 
   return (
-    <section className="page">
-      <header className="page-header inline">
-        <button className="ghost-button" type="button" onClick={onBack}>
-          ← Inicio
-        </button>
-        <h1>Detalle</h1>
-      </header>
-      <article className="detail-panel">
+    <div className="credential-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="credentialDetailTitle">
+      <section className="credential-modal detail-sheet">
+        <div className="sheet-handle" aria-hidden="true" />
+        <header className="credential-modal-header">
+          <div>
+            <p className="eyebrow">Detalle</p>
+            <h1 id="credentialDetailTitle">{entry.title}</h1>
+          </div>
+          <button className="sheet-close-button" type="button" aria-label="Cerrar" onClick={onBack}>
+            ×
+          </button>
+        </header>
+      <article className="detail-panel detail-sheet-content">
         <div className="detail-title">
           <div>
             <p className="eyebrow">{entry.category}</p>
@@ -167,18 +190,35 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
           </div>
           <StrengthBadge strength={entry.strength} />
         </div>
-        <div className="detail-row">
-          <span>Usuario</span>
-          <strong>{entry.username || 'Sin usuario'}</strong>
+        <div className="detail-row action-detail-row">
+          <div>
+            <span>Usuario</span>
+            <strong>{entry.username || 'Sin usuario'}</strong>
+          </div>
+          {entry.username && (
+            <button className="mini-button" type="button" onClick={() => copyToClipboard(entry.username, 'Usuario')}>
+              Copiar
+            </button>
+          )}
         </div>
         <div className="warning-list">
           {entry.strength === 'weak' && <p className="inline-warning block">Contraseña débil.</p>}
           {repeatedCount > 1 && <p className="inline-warning block">Esta contraseña se repite en {repeatedCount} registros.</p>}
           {!entry.website.trim() && <p className="inline-warning block">Este registro no tiene sitio web.</p>}
         </div>
-        <div className="detail-row">
-          <span>Contraseña</span>
-          <strong>{isPasswordVisible ? entry.password : '••••••••••••'}</strong>
+        <div className="detail-row action-detail-row">
+          <div>
+            <span>Contraseña</span>
+            <strong>{isPasswordVisible ? entry.password : '••••••••••••'}</strong>
+          </div>
+          <div className="mini-actions">
+            <button className="mini-button" type="button" onClick={() => setIsPasswordVisible((current) => !current)}>
+              {isPasswordVisible ? 'Ocultar' : 'Ver'}
+            </button>
+            <button className="mini-button" type="button" onClick={() => copyToClipboard(entry.password, 'Contraseña')}>
+              Copiar
+            </button>
+          </div>
         </div>
         {entry.notes && (
           <div className="notes-box">
@@ -188,23 +228,14 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
         )}
         <p className="muted small">Actualizada: {new Date(entry.updatedAt).toLocaleString()}</p>
         {toast && <div className={`toast ${toast.type}`}>{toast.message}</div>}
-        <div className="button-grid">
-          <button className="secondary-button" type="button" onClick={() => setIsPasswordVisible((current) => !current)}>
-            {isPasswordVisible ? 'Ocultar' : 'Mostrar'}
+        <div className="detail-actions">
+          <button className="primary-button" type="button" onClick={() => setIsEditing(true)}>
+            Editar registro
           </button>
-          <button className="secondary-button" type="button" onClick={() => copyToClipboard(entry.username, 'Usuario')}>
-            Copiar usuario
-          </button>
-          <button className="secondary-button" type="button" onClick={() => copyToClipboard(entry.password, 'Contraseña')}>
-            Copiar contraseña
-          </button>
-          <button className="secondary-button" type="button" onClick={() => setIsEditing(true)}>
-            Editar
+          <button className="danger-button" type="button" onClick={() => setIsDeleteModalOpen(true)}>
+            Eliminar
           </button>
         </div>
-        <button className="danger-button" type="button" onClick={() => setIsDeleteModalOpen(true)}>
-          Eliminar
-        </button>
       </article>
       {isDeleteModalOpen && (
         <DangerModal
@@ -215,6 +246,7 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
           onConfirm={() => onDelete(entry.id)}
         />
       )}
-    </section>
+      </section>
+    </div>
   );
 }

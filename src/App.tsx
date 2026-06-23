@@ -797,7 +797,7 @@ function App() {
     <AppShell currentView={view} onNavigate={setView}>
       {busyMessage && <div className="busy-banner">{busyMessage}</div>}
       {updateBanner}
-      {view === 'vault' && (
+      {(view === 'vault' || view === 'add' || (view === 'detail' && selectedEntry)) && (
         <VaultPage
           entries={vault.entries}
           repeatedCountsByEntryId={audit?.repeatedCountsByEntryId ?? {}}

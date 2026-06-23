@@ -86,6 +86,9 @@ export function SetupPage({ onCreateVault, onBack }: SetupPageProps) {
             autoComplete="new-password"
             onChange={setMasterPassword}
           />
+          <p className="field-hint">
+            Mínimo 10 caracteres. Esta contraseña abre tu bóveda; si la olvidas, no se puede recuperar.
+          </p>
           {errors.masterPassword && <p className="field-error">{errors.masterPassword}</p>}
           <SecureField
             id="confirmation"
@@ -94,6 +97,7 @@ export function SetupPage({ onCreateVault, onBack }: SetupPageProps) {
             autoComplete="new-password"
             onChange={setConfirmation}
           />
+          <p className="field-hint">Debe ser exactamente igual a la contraseña maestra.</p>
           {errors.confirmation && <p className="field-error">{errors.confirmation}</p>}
           {errors.form && <p className="form-error">{errors.form}</p>}
           <button className="primary-button" type="submit" disabled={isSaving}>
