@@ -2,17 +2,62 @@
 
 MVP de una app web/PWA móvil primero para gestionar una bóveda local de contraseñas. La bóveda completa se cifra del lado del cliente con Web Crypto API y se guarda en IndexedDB.
 
-## Instalación
+## Requisitos
+
+- Node.js 20.19 o superior (o 22.12 o superior) y npm.
+- Docker con Docker Compose, únicamente si se usarán cuentas remotas y sincronización.
+
+## Ejecutar solo el frontend
+
+Este modo permite usar bóvedas locales en IndexedDB y no requiere Java, PostgreSQL ni Docker.
+
+Desde la raíz del repositorio:
 
 ```bash
-npm install
-```
-
-## Desarrollo
-
-```bash
+npm ci
 npm run dev
 ```
+
+Abre `http://localhost:5173` en el navegador. Para detener el servidor, presiona `Ctrl+C`.
+
+## Ejecutar la aplicación completa
+
+Este modo levanta el frontend, el backend y PostgreSQL para habilitar cuentas remotas y sincronización cifrada.
+
+1. Crea la configuración local del frontend desde la raíz del repositorio:
+
+```bash
+cp .env.example .env
+```
+
+El valor predeterminado conecta el frontend con `http://localhost:8080`.
+
+2. En una terminal, levanta PostgreSQL y el backend:
+
+```bash
+cd backend
+docker compose up --build backend
+```
+
+Espera hasta que el backend termine de iniciar. Estará disponible en `http://localhost:8080`; puedes comprobarlo abriendo `http://localhost:8080/api/health`.
+
+3. En otra terminal, desde la raíz del repositorio, levanta el frontend:
+
+```bash
+npm ci
+npm run dev
+```
+
+4. Abre `http://localhost:5173`.
+
+Para detener los procesos, presiona `Ctrl+C` en ambas terminales. Después elimina los contenedores, conservando los datos de PostgreSQL:
+
+```bash
+cd backend
+docker compose down
+```
+
+Para borrar también la base de datos local, usa `docker compose down -v`. Este último comando es destructivo y elimina las cuentas y bóvedas remotas almacenadas localmente.
 
 Para probar desde un teléfono en la misma red, recuerda que el cifrado usa Web Crypto API. En móvil, abrir `http://IP-local:5173` normalmente no es un contexto seguro, por lo que la bóveda no se podrá crear ni desbloquear. Usa una URL HTTPS, un túnel HTTPS de desarrollo o despliega el build en un hosting HTTPS.
 
@@ -144,14 +189,76 @@ npm run dev -- --host 0.0.0.0
 
 Configura `VITE_API_BASE_URL` con una URL del backend accesible desde el teléfono. Si usas IP local con HTTP, recuerda que Web Crypto puede bloquear creación/desbloqueo por no ser contexto seguro.
 
-Con Cloudflare Tunnel:
+### Ejecutar la aplicación completa con túneles HTTPS
 
-- Crear un túnel HTTPS para el frontend.
-- Crear otro túnel HTTPS para el backend.
-- Configurar `VITE_API_BASE_URL` con la URL HTTPS pública del backend.
-- Configurar `CORS_ALLOWED_ORIGINS` en backend con el origen exacto del frontend.
+Este procedimiento usa dos túneles rápidos de Cloudflare: uno para el frontend y otro para el backend. Las URL `trycloudflare.com` son temporales y cambian cada vez que se vuelve a ejecutar `cloudflared`.
 
-No abras CORS a cualquier origen en producción.
+1. Instala `cloudflared` si todavía no está disponible. En macOS con Homebrew:
+
+```bash
+brew install cloudflared
+```
+
+2. Desde la raíz del repositorio, instala las dependencias y crea la configuración del frontend:
+
+```bash
+npm ci
+cp .env.example .env
+```
+
+3. En la terminal 1, levanta el frontend:
+
+```bash
+npm run dev
+```
+
+4. En la terminal 2, crea el túnel del frontend. `--http-host-header` permite que Vite acepte las solicitudes enviadas por el túnel:
+
+```bash
+cloudflared tunnel --url http://localhost:5173 --http-host-header localhost:5173
+```
+
+Copia la URL HTTPS que muestra `cloudflared`, por ejemplo `https://frontend-ejemplo.trycloudflare.com`. Esta será la `URL_FRONTEND` en los pasos siguientes.
+
+5. En la terminal 3, levanta PostgreSQL y el backend permitiendo el origen local y la URL pública exacta del frontend. Sustituye el valor de ejemplo por la URL obtenida en el paso anterior, sin `/` al final:
+
+```bash
+cd backend
+CORS_ALLOWED_ORIGINS="http://localhost:5173,https://frontend-ejemplo.trycloudflare.com" docker compose up --build backend
+```
+
+Espera a que `http://localhost:8080/api/health` responda correctamente.
+
+6. En la terminal 4, crea el túnel del backend:
+
+```bash
+cloudflared tunnel --url http://localhost:8080
+```
+
+Copia la nueva URL HTTPS, por ejemplo `https://backend-ejemplo.trycloudflare.com`. Esta será la `URL_BACKEND`; no debe ser la misma URL del frontend.
+
+7. En el archivo `.env` de la raíz, reemplaza su contenido con la URL real del backend, sin `/` al final:
+
+```dotenv
+VITE_API_BASE_URL=https://backend-ejemplo.trycloudflare.com
+```
+
+8. Detén únicamente el frontend de la terminal 1 con `Ctrl+C` y vuelve a iniciarlo para que Vite lea el nuevo `.env`:
+
+```bash
+npm run dev
+```
+
+El túnel de la terminal 2 seguirá apuntando al puerto `5173`. Abre la `URL_FRONTEND` desde la computadora o el teléfono. No cierres ninguna de las cuatro terminales mientras uses la aplicación.
+
+Para detener todo, presiona `Ctrl+C` en las cuatro terminales y luego elimina los contenedores sin borrar los datos:
+
+```bash
+cd backend
+docker compose down
+```
+
+Si reinicias cualquiera de los túneles rápidos, repite la configuración con las nuevas URL. No abras CORS a cualquier origen en producción.
 
 ## Compilación
 
