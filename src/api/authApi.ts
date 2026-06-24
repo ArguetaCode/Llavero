@@ -26,6 +26,11 @@ export interface LoginRemoteInput {
   password: string;
 }
 
+export interface ChangeRemotePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export function registerRemote(input: RegisterRemoteInput): Promise<AuthResponse> {
   return apiRequest<AuthResponse>('/api/auth/register', {
     method: 'POST',
@@ -42,4 +47,12 @@ export function loginRemote(input: LoginRemoteInput): Promise<AuthResponse> {
 
 export function fetchRemoteMe(token: string): Promise<RemoteUser> {
   return apiRequest<RemoteUser>('/api/auth/me', { token });
+}
+
+export function changeRemotePassword(token: string, input: ChangeRemotePasswordInput): Promise<AuthResponse> {
+  return apiRequest<AuthResponse>('/api/auth/password', {
+    method: 'POST',
+    token,
+    body: JSON.stringify(input),
+  });
 }

@@ -142,7 +142,10 @@ GET /api/health
 POST /api/auth/register
 POST /api/auth/login
 GET /api/auth/me
+POST /api/auth/password
 ```
+
+`POST /api/auth/password` requiere sesión, la contraseña actual y una nueva contraseña de 10 a 128 caracteres. Al cambiarla invalida los tokens anteriores y devuelve un token nuevo para la sesión actual.
 
 `register` y `login` devuelven:
 

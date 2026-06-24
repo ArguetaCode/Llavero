@@ -9,6 +9,7 @@ interface RemoteOnboardingPageProps {
   pendingImportPreview: BackupImportPreview | null;
   onLogin: (input: LoginRemoteInput) => Promise<RemoteVault[]>;
   onRegister: (input: RegisterRemoteInput) => Promise<RemoteVault[]>;
+  onUseAnotherAccount: () => void;
   onContinueWithNewVault: () => void;
   onContinueLocally: () => void;
   onValidateRemoteImport: (remoteVaultId: string, masterPassword: string) => Promise<BackupImportPreview>;
@@ -22,6 +23,7 @@ export function RemoteOnboardingPage({
   pendingImportPreview,
   onLogin,
   onRegister,
+  onUseAnotherAccount,
   onContinueWithNewVault,
   onContinueLocally,
   onValidateRemoteImport,
@@ -153,6 +155,9 @@ export function RemoteOnboardingPage({
           <button className="ghost-button" type="button" disabled={isWorking} onClick={onContinueWithNewVault}>
             Crear otra bóveda
           </button>
+          <button className="link-button" type="button" disabled={isWorking} onClick={onUseAnotherAccount}>
+            Cerrar sesión y usar otra cuenta
+          </button>
           {message && <p className="form-error">{message}</p>}
         </section>
 
@@ -160,7 +165,11 @@ export function RemoteOnboardingPage({
           <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="remoteImportTitle">
             <div className="modal-panel">
               <h2 id="remoteImportTitle">Importar bóveda en este dispositivo</h2>
-              <p>La contraseña maestra es correcta. Se guardará una copia local cifrada sin reemplazar otros datos.</p>
+              <p>
+                {pendingImportPreview.existingLocalVaultId
+                  ? 'La contraseña maestra es correcta. Se actualizará la copia local existente sin crear otra bóveda.'
+                  : 'La contraseña maestra es correcta. Se guardará una copia local cifrada sin reemplazar otros datos.'}
+              </p>
               <div className="modal-summary">
                 <span>Nombre: {pendingImportPreview.displayName ?? 'Bóveda remota'}</span>
                 <span>Elementos: {pendingImportPreview.itemCount}</span>

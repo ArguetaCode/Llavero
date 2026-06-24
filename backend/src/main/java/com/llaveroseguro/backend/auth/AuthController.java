@@ -2,6 +2,7 @@ package com.llaveroseguro.backend.auth;
 
 import com.llaveroseguro.backend.audit.AuditService;
 import com.llaveroseguro.backend.auth.AuthDtos.AuthResponse;
+import com.llaveroseguro.backend.auth.AuthDtos.ChangePasswordRequest;
 import com.llaveroseguro.backend.auth.AuthDtos.LoginRequest;
 import com.llaveroseguro.backend.auth.AuthDtos.RegisterRequest;
 import com.llaveroseguro.backend.auth.AuthDtos.UserResponse;
@@ -45,5 +46,16 @@ public class AuthController {
   @GetMapping("/me")
   public UserResponse me(@AuthenticationPrincipal AuthenticatedUser user) {
     return authService.me(user.user());
+  }
+
+  @PostMapping("/password")
+  public AuthResponse changePassword(
+      @AuthenticationPrincipal AuthenticatedUser user,
+      @Valid @RequestBody ChangePasswordRequest request,
+      HttpServletRequest servletRequest
+  ) {
+    AuthResponse response = authService.changePassword(user, request);
+    auditService.record(user.user(), "AUTH_PASSWORD_CHANGE", servletRequest);
+    return response;
   }
 }

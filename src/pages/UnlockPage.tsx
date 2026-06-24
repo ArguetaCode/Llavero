@@ -6,10 +6,11 @@ import type { LocalVaultProfile, VaultData } from '../domain/types';
 interface UnlockPageProps {
   profile: LocalVaultProfile;
   onBack: () => void;
+  onUseAnotherAccount: () => void;
   onUnlock: (vault: VaultData, key: CryptoKey) => Promise<void>;
 }
 
-export function UnlockPage({ profile, onBack, onUnlock }: UnlockPageProps) {
+export function UnlockPage({ profile, onBack, onUseAnotherAccount, onUnlock }: UnlockPageProps) {
   const [masterPassword, setMasterPassword] = useState('');
   const [error, setError] = useState('');
   const [isUnlocking, setIsUnlocking] = useState(false);
@@ -60,6 +61,9 @@ export function UnlockPage({ profile, onBack, onUnlock }: UnlockPageProps) {
           <button className="link-button" type="button" onClick={() => setShowRecoveryHelp(true)}>
             ¿Olvidaste tu contraseña maestra?
           </button>
+          <button className="ghost-button" type="button" onClick={onUseAnotherAccount}>
+            Usar otra cuenta
+          </button>
         </form>
       </section>
       {showRecoveryHelp && (
@@ -70,7 +74,10 @@ export function UnlockPage({ profile, onBack, onUnlock }: UnlockPageProps) {
               Llavero Seguro no guarda tu contraseña maestra. Si la olvidaste, solo puedes importar un respaldo cifrado con su
               contraseña correcta o eliminar la bóveda local y empezar de nuevo.
             </p>
-            <div className="modal-actions single">
+            <div className="modal-actions">
+              <button className="ghost-button" type="button" onClick={onUseAnotherAccount}>
+                Usar otra cuenta
+              </button>
               <button className="primary-button" type="button" onClick={() => setShowRecoveryHelp(false)}>
                 Entendido
               </button>

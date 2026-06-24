@@ -26,8 +26,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     String authorization = request.getHeader("Authorization");
     if (authorization != null && authorization.startsWith("Bearer ")) {
       try {
-        String email = jwtService.subject(authorization.substring("Bearer ".length()));
-        AuthenticatedUser user = (AuthenticatedUser) userDetailsService.loadUserByUsername(email);
+        JwtService.TokenClaims claims = jwtService.claims(authorization.substring("Bearer ".length()));
+        AuthenticatedUser user = (AuthenticatedUser) userDetailsService.loadUserByUsername(claims.subject());
+        if (user.user().getTokenVersion() != claims.tokenVersion()) {
+          throw new IllegalArgumentException("Token invalidado.");
+        }
         UsernamePasswordAuthenticationToken authentication =
             new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authentication);

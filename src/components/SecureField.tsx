@@ -7,9 +7,18 @@ interface SecureFieldProps {
   onChange: (value: string) => void;
   placeholder?: string;
   autoComplete?: string;
+  preventPasswordManagerFill?: boolean;
 }
 
-export function SecureField({ id, label, value, onChange, placeholder, autoComplete }: SecureFieldProps) {
+export function SecureField({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+  preventPasswordManagerFill = false,
+}: SecureFieldProps) {
   const [isVisible, setIsVisible] = useState(false);
 
   return (
@@ -22,6 +31,9 @@ export function SecureField({ id, label, value, onChange, placeholder, autoCompl
           value={value}
           placeholder={placeholder}
           autoComplete={autoComplete}
+          data-1p-ignore={preventPasswordManagerFill ? 'true' : undefined}
+          data-bwignore={preventPasswordManagerFill ? 'true' : undefined}
+          data-lpignore={preventPasswordManagerFill ? 'true' : undefined}
           onChange={(event) => onChange(event.target.value)}
         />
         <button type="button" className="icon-button" onClick={() => setIsVisible((current) => !current)}>

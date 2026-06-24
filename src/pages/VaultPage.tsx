@@ -4,10 +4,9 @@ import { EmptyState } from '../components/EmptyState';
 import type { PasswordCategory, PasswordEntry } from '../domain/types';
 
 const categories: Array<'Todos' | PasswordCategory> = ['Todos', 'Personal', 'Trabajo', 'Estudio', 'Banco', 'Redes'];
-type QuickFilter = 'Todos' | 'Favoritos' | 'Débiles' | 'Repetidas';
 type SortMode = 'recent' | 'alphabetical' | 'strength';
+type StatusFilter = 'all' | 'strong' | 'weak' | 'repeated';
 
-const quickFilters: QuickFilter[] = ['Todos', 'Favoritos', 'Débiles', 'Repetidas'];
 const strengthRank = { weak: 0, medium: 1, strong: 2 };
 
 interface VaultPageProps {
@@ -20,31 +19,31 @@ interface VaultPageProps {
 export function VaultPage({ entries, repeatedCountsByEntryId, onAdd, onOpenEntry }: VaultPageProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'Todos' | PasswordCategory>('Todos');
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('Todos');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortMode, setSortMode] = useState<SortMode>('recent');
 
   const filteredEntries = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return entries.filter((entry) => {
       const matchesCategory = category === 'Todos' || entry.category === category;
-      const matchesQuickFilter =
-        quickFilter === 'Todos' ||
-        (quickFilter === 'Favoritos' && entry.favorite) ||
-        (quickFilter === 'Débiles' && entry.strength === 'weak') ||
-        (quickFilter === 'Repetidas' && (repeatedCountsByEntryId[entry.id] ?? 0) > 1);
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'strong' && entry.strength === 'strong') ||
+        (statusFilter === 'weak' && entry.strength === 'weak') ||
+        (statusFilter === 'repeated' && (repeatedCountsByEntryId[entry.id] ?? 0) > 1);
       const matchesQuery =
         !normalizedQuery ||
         [entry.title, entry.website, entry.username, entry.category].some((value) =>
           value.toLowerCase().includes(normalizedQuery),
         );
 
-      return matchesCategory && matchesQuickFilter && matchesQuery;
+      return matchesCategory && matchesStatus && matchesQuery;
     }).sort((first, second) => {
       if (sortMode === 'alphabetical') return first.title.localeCompare(second.title);
       if (sortMode === 'strength') return strengthRank[first.strength] - strengthRank[second.strength];
       return new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime();
     });
-  }, [category, entries, query, quickFilter, repeatedCountsByEntryId, sortMode]);
+  }, [category, entries, query, repeatedCountsByEntryId, sortMode, statusFilter]);
 
   return (
     <section className="page">
@@ -53,15 +52,30 @@ export function VaultPage({ entries, repeatedCountsByEntryId, onAdd, onOpenEntry
           <p className="eyebrow">Bóveda local</p>
           <h1>Mi llavero</h1>
         </div>
-        <span className="counter">{entries.length}</span>
+        <div className="vault-header-actions">
+          <span className="counter" aria-label={`${entries.length} credenciales`}>{entries.length}</span>
+          <span className="profile-avatar" aria-label="Perfil de usuario" role="img">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="8" r="3.25" />
+              <path d="M5.5 19c.6-3.2 3-5.2 6.5-5.2s5.9 2 6.5 5.2" />
+            </svg>
+          </span>
+        </div>
       </header>
-      <input
-        className="search-input"
-        type="search"
-        value={query}
-        placeholder="Buscar por sitio, usuario o categoría"
-        onChange={(event) => setQuery(event.target.value)}
-      />
+      <label className="search-field" htmlFor="vaultSearch">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle cx="10.8" cy="10.8" r="6.3" />
+          <path d="m15.5 15.5 4.2 4.2" />
+        </svg>
+        <input
+          id="vaultSearch"
+          type="search"
+          aria-label="Buscar credenciales"
+          value={query}
+          placeholder="Buscar por sitio, usuario o categoría"
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </label>
       <div className="category-row" aria-label="Filtros por categoría">
         {categories.map((item) => (
           <button
@@ -74,26 +88,29 @@ export function VaultPage({ entries, repeatedCountsByEntryId, onAdd, onOpenEntry
           </button>
         ))}
       </div>
-      <div className="category-row" aria-label="Filtros rápidos">
-        {quickFilters.map((item) => (
-          <button
-            key={item}
-            type="button"
-            className={quickFilter === item ? 'chip active' : 'chip'}
-            onClick={() => setQuickFilter(item)}
+      <div className="vault-selectors">
+        <label className="field" htmlFor="sortMode">
+          <span>Orden</span>
+          <select id="sortMode" value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
+            <option value="recent">Reciente</option>
+            <option value="alphabetical">Alfabético</option>
+            <option value="strength">Fortaleza</option>
+          </select>
+        </label>
+        <label className="field" htmlFor="statusFilter">
+          <span>Estado</span>
+          <select
+            id="statusFilter"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
           >
-            {item}
-          </button>
-        ))}
+            <option value="all">Todos</option>
+            <option value="strong">Fuertes</option>
+            <option value="weak">Débiles</option>
+            <option value="repeated">Repetidas</option>
+          </select>
+        </label>
       </div>
-      <label className="field compact-field" htmlFor="sortMode">
-        <span>Orden</span>
-        <select id="sortMode" value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
-          <option value="recent">Reciente</option>
-          <option value="alphabetical">Alfabético</option>
-          <option value="strength">Fortaleza</option>
-        </select>
-      </label>
       <div className="password-list">
         {filteredEntries.map((entry) => (
           <PasswordCard

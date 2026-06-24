@@ -1,5 +1,19 @@
 export function registerServiceWorker(): void {
-  if (!('serviceWorker' in navigator) || import.meta.env.DEV) {
+  if (!('serviceWorker' in navigator)) {
+    return;
+  }
+
+  if (import.meta.env.DEV) {
+    window.addEventListener('load', () => {
+      void navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => void registration.unregister());
+      });
+      if ('caches' in window) {
+        void caches.keys().then((keys) => {
+          keys.filter((key) => key.startsWith('llavero-seguro-')).forEach((key) => void caches.delete(key));
+        });
+      }
+    });
     return;
   }
 

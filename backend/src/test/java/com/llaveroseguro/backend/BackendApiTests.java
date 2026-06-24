@@ -104,6 +104,42 @@ class BackendApiTests {
   }
 
   @Test
+  void changesRemotePasswordAndInvalidatesPreviousToken() throws Exception {
+    String email = "change-password@example.test";
+    String oldToken = register(email, "Password Change");
+
+    mockMvc.perform(post("/api/auth/password")
+            .header("Authorization", "Bearer " + oldToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json(Map.of("currentPassword", "incorrect-password", "newPassword", "new-remote-password-2"))))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value("La contraseña actual de la cuenta no es correcta."));
+
+    MvcResult changed = mockMvc.perform(post("/api/auth/password")
+            .header("Authorization", "Bearer " + oldToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json(Map.of("currentPassword", "remote-password-1", "newPassword", "new-remote-password-2"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.token").isString())
+        .andExpect(jsonPath("$.user.email").value(email))
+        .andReturn();
+    String newToken = objectMapper.readTree(changed.getResponse().getContentAsString()).get("token").asText();
+
+    mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + oldToken))
+        .andExpect(status().isUnauthorized());
+    mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + newToken))
+        .andExpect(status().isOk());
+    mockMvc.perform(post("/api/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json(Map.of("email", email, "password", "remote-password-1"))))
+        .andExpect(status().isUnauthorized());
+    mockMvc.perform(post("/api/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(json(Map.of("email", email, "password", "new-remote-password-2"))))
+        .andExpect(status().isOk());
+  }
+
+  @Test
   void listsOnlyAuthenticatedUsersVaults() throws Exception {
     String ownerToken = register("list-owner@example.test", "List Owner");
     String otherToken = register("list-other@example.test", "List Other");

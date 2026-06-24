@@ -220,6 +220,34 @@ h1 {
   background: #e8f5f3;
 }
 
+.vault-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.profile-avatar {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #c9e3e0;
+  border-radius: 50%;
+  color: var(--primary);
+  background: #ffffff;
+  box-shadow: 0 5px 14px rgba(31, 67, 91, 0.08);
+}
+
+.profile-avatar svg {
+  width: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
 .form-stack {
   display: grid;
   gap: 15px;
@@ -407,8 +435,29 @@ h1 {
   color: var(--primary);
 }
 
-.search-input {
+.search-field {
+  position: relative;
+  display: block;
   margin-bottom: 14px;
+}
+
+.search-field svg {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 14px;
+  width: 20px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: var(--muted);
+  stroke-linecap: round;
+  stroke-width: 1.9;
+  pointer-events: none;
+}
+
+.search-field input {
+  padding-left: 43px;
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .category-row {
@@ -425,6 +474,18 @@ h1 {
 
 .category-row::-webkit-scrollbar {
   display: none;
+}
+
+.vault-selectors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vault-selectors select {
+  min-height: 46px;
+  padding-right: 34px;
 }
 
 .chip {
@@ -673,14 +734,53 @@ h1 {
 
 .password-card {
   width: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 15px;
+  gap: 16px;
+  padding: 16px 18px;
   color: var(--text);
   text-align: left;
 }
+
+.credential-leading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.credential-summary {
+  min-width: 0;
+}
+
+.credential-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  border-radius: 13px;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.credential-icon svg {
+  width: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.credential-icon.facebook { background: #1877f2; font-family: Arial, sans-serif; font-size: 1.5rem; }
+.credential-icon.instagram { background: linear-gradient(135deg, #833ab4, #e1306c, #fcb045); font-size: 1.4rem; }
+.credential-icon.google { background: #ffffff; color: #4285f4; border: 1px solid var(--border); font-size: 1.15rem; }
+.credential-icon.github { background: #24292f; font-size: 0.75rem; }
+.credential-icon.microsoft { background: #2f7ed8; font-size: 1.05rem; }
+.credential-icon.amazon { background: #232f3e; font-size: 1.25rem; }
 
 .password-card h3,
 .detail-title h2 {
@@ -692,6 +792,13 @@ h1 {
   margin: 0;
   color: var(--muted);
   overflow-wrap: anywhere;
+}
+
+.password-card h3,
+.password-card p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .inline-warning {
@@ -724,6 +831,13 @@ h1 {
   gap: 8px;
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.card-category {
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .strength-badge {
@@ -763,7 +877,7 @@ h1 {
   color: #ffffff;
   font-size: 2rem;
   font-weight: 900;
-  box-shadow: 0 14px 28px rgba(22, 122, 114, 0.28);
+  box-shadow: 0 8px 18px rgba(22, 122, 114, 0.2);
 }
 
 .empty-state {
@@ -1243,8 +1357,8 @@ h1 {
   }
 
   .password-card {
-    align-items: flex-start;
-    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
   }
 
   .detail-page .page-header.inline {
@@ -1269,10 +1383,18 @@ h1 {
     grid-template-columns: 1fr;
   }
 
+  .credential-leading {
+    gap: 10px;
+  }
+
+  .credential-icon {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+  }
+
   .card-meta {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
+    gap: 6px;
   }
 
   .selector-heading {

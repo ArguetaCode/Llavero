@@ -132,6 +132,20 @@ export async function saveVaultProfile(profile: LocalVaultProfile): Promise<void
   await transactionDone(transaction, database);
 }
 
+export async function saveVaultProfileReplacingDuplicates(
+  profile: LocalVaultProfile,
+  duplicateVaultIds: string[],
+): Promise<void> {
+  const database = await openMigratedDatabase();
+  const transaction = database.transaction(PROFILE_STORE_NAME, 'readwrite');
+  const store = transaction.objectStore(PROFILE_STORE_NAME);
+  store.put(profile);
+  duplicateVaultIds
+    .filter((vaultId) => vaultId !== profile.vaultId)
+    .forEach((vaultId) => store.delete(vaultId));
+  await transactionDone(transaction, database);
+}
+
 export async function deleteVaultProfile(vaultId: string): Promise<void> {
   const database = await openMigratedDatabase();
   const transaction = database.transaction(PROFILE_STORE_NAME, 'readwrite');

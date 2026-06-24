@@ -12,10 +12,31 @@ import { Toast, type ToastMessage } from './components/Toast';
 import { createBackupFileName, createVaultBackup, parseVaultBackupJson } from './backup/vaultBackup';
 import { CURRENT_CRYPTO_METADATA } from './crypto/cryptoMetadata';
 import { decryptVault, deriveKey, encryptVault, generateSalt } from './crypto/cryptoService';
-import { createLocalVaultProfile, cloneProfileAsNewVault } from './storage/vaultProfileHelpers';
-import { deleteVaultProfile, listVaultProfiles, saveVaultProfile, touchVaultProfile } from './storage/vaultStorage';
+import {
+  cloneProfileAsNewVault,
+  createLocalVaultProfile,
+  findLocalProfileForRemoteImport,
+  findLocalProfilesForRemoteImport,
+  prepareRemoteProfileImport,
+} from './storage/vaultProfileHelpers';
+import {
+  deleteVaultProfile,
+  listVaultProfiles,
+  saveVaultProfile,
+  saveVaultProfileReplacingDuplicates,
+  touchVaultProfile,
+} from './storage/vaultStorage';
 import { auditVault } from './domain/vaultAudit';
-import { fetchRemoteMe, loginRemote, registerRemote, type LoginRemoteInput, type RegisterRemoteInput, type RemoteUser } from './api/authApi';
+import {
+  changeRemotePassword,
+  fetchRemoteMe,
+  loginRemote,
+  registerRemote,
+  type ChangeRemotePasswordInput,
+  type LoginRemoteInput,
+  type RegisterRemoteInput,
+  type RemoteUser,
+} from './api/authApi';
 import { ApiError } from './api/apiClient';
 import { createRemoteVault, listRemoteVaults, updateRemoteVault, type RemoteVault } from './api/vaultSyncApi';
 import { createRemoteVaultUploadPayload, findExistingRemoteVault, parseRemoteEncryptedPayload } from './sync/vaultSyncPayload';
@@ -58,6 +79,7 @@ function App() {
   const [lastManualUploadAt, setLastManualUploadAt] = useState<string | null>(null);
   const [lastManualDownloadAt, setLastManualDownloadAt] = useState<string | null>(null);
   const [hasPassedRemoteOnboarding, setHasPassedRemoteOnboarding] = useState(false);
+  const [isSwitchingRemoteAccount, setIsSwitchingRemoteAccount] = useState(false);
   const [pendingBackupImport, setPendingBackupImport] = useState<{
     profile: LocalVaultProfile;
     vault: VaultData;
@@ -82,18 +104,25 @@ function App() {
 
   useEffect(() => {
     if (!accessToken) return;
+    let isCancelled = false;
 
     Promise.all([fetchRemoteMe(accessToken), listRemoteVaults(accessToken)])
       .then(([user, vaults]) => {
+        if (isCancelled) return;
         setRemoteUser(user);
         setRemoteVaults(vaults);
       })
       .catch((error: unknown) => {
+        if (isCancelled) return;
         if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
           clearRemoteSessionState();
         }
         // Una caída temporal del backend no debe cerrar la sesión local ni bloquear la bóveda.
       });
+
+    return () => {
+      isCancelled = true;
+    };
   }, [accessToken]);
 
   useEffect(() => {
@@ -240,6 +269,23 @@ function App() {
     showToast('Sesión remota cerrada.');
   }
 
+  async function handleChangeRemotePassword(input: ChangeRemotePasswordInput): Promise<void> {
+    if (!accessToken) throw new Error('Inicia sesión remota primero.');
+    const response = await changeRemotePassword(accessToken, input);
+    setRemoteUser(response.user);
+    setAccessToken(response.token);
+    localStorage.setItem(REMOTE_TOKEN_STORAGE_KEY, response.token);
+    showToast('Contraseña de cuenta actualizada. Las demás sesiones fueron cerradas.');
+  }
+
+  function handleUseAnotherRemoteAccount(): void {
+    clearRemoteSessionState();
+    setLastManualUploadAt(null);
+    setLastManualDownloadAt(null);
+    setPendingBackupImport(null);
+    setIsSwitchingRemoteAccount(true);
+  }
+
   async function handleFetchRemoteMe(): Promise<void> {
     if (!accessToken) throw new Error('Inicia sesión remota primero.');
     const user = await fetchRemoteMe(accessToken);
@@ -371,6 +417,7 @@ function App() {
       createdAt: backup.createdAt,
       updatedAt: backup.updatedAt,
     });
+    const existingLocalProfile = findLocalProfileForRemoteImport(profiles, remoteVault.id, profile);
     const preview: BackupImportPreview = {
       exportedAt: backup.exportedAt,
       itemCount: importedVault.entries.length,
@@ -380,6 +427,7 @@ function App() {
       remoteVaultId: remoteVault.id,
       remoteDisplayName: remoteVault.displayName,
       remoteUpdatedAt: remoteVault.updatedAt,
+      existingLocalVaultId: existingLocalProfile?.vaultId,
     };
 
     setPendingBackupImport({ profile, vault: importedVault, key, preview });
@@ -661,11 +709,22 @@ function App() {
 
   async function handleConfirmBackupImport(mode: 'replace-current' | 'new' = 'replace-current'): Promise<void> {
     if (!pendingBackupImport) throw new Error('No hay un respaldo validado para importar.');
-    const syncDownloadedAt = pendingBackupImport.preview.source === 'remote' ? new Date().toISOString() : undefined;
+    const isRemoteImport = pendingBackupImport.preview.source === 'remote';
+    const syncDownloadedAt = isRemoteImport ? new Date().toISOString() : undefined;
+    const matchingRemoteProfiles = isRemoteImport && pendingBackupImport.preview.remoteVaultId
+      ? findLocalProfilesForRemoteImport(
+          profiles,
+          pendingBackupImport.preview.remoteVaultId,
+          pendingBackupImport.profile,
+        )
+      : [];
+    const existingRemoteProfile = matchingRemoteProfiles[0];
 
     const profile =
       mode === 'new'
-        ? cloneProfileAsNewVault(pendingBackupImport.profile)
+        ? isRemoteImport
+          ? prepareRemoteProfileImport(pendingBackupImport.profile, existingRemoteProfile)
+          : cloneProfileAsNewVault(pendingBackupImport.profile)
         : {
             ...pendingBackupImport.profile,
             vaultId: activeProfile?.vaultId ?? pendingBackupImport.profile.vaultId,
@@ -681,7 +740,14 @@ function App() {
         }
       : profile;
 
-    await saveVaultProfile(nextProfile);
+    if (isRemoteImport && mode === 'new') {
+      await saveVaultProfileReplacingDuplicates(
+        nextProfile,
+        matchingRemoteProfiles.map((matchingProfile) => matchingProfile.vaultId),
+      );
+    } else {
+      await saveVaultProfile(nextProfile);
+    }
     await refreshProfiles();
     setSelectedVaultId(nextProfile.vaultId);
     setVault(pendingBackupImport.vault);
@@ -691,7 +757,13 @@ function App() {
     setIsCreatingVault(false);
     setView('vault');
     if (syncDownloadedAt) setLastManualDownloadAt(syncDownloadedAt);
-    showToast(mode === 'new' ? 'Respaldo importado como nueva bóveda.' : 'Respaldo importado correctamente.');
+    showToast(
+      mode === 'replace-current'
+        ? 'Respaldo importado correctamente.'
+        : existingRemoteProfile
+          ? 'Bóveda local actualizada desde el respaldo remoto.'
+          : 'Respaldo importado como nueva bóveda.',
+    );
   }
 
   function handleCancelBackupImport(): void {
@@ -721,6 +793,35 @@ function App() {
     </div>
   ) : null;
 
+  if (isSwitchingRemoteAccount) {
+    return (
+      <>
+        {busyMessage && <div className="busy-banner">{busyMessage}</div>}
+        {updateBanner}
+        <RemoteOnboardingPage
+          remoteUser={remoteUser}
+          remoteVaults={remoteVaults}
+          pendingImportPreview={pendingBackupImport?.preview ?? null}
+          onLogin={handleOnboardingLogin}
+          onRegister={handleOnboardingRegister}
+          onUseAnotherAccount={handleUseAnotherRemoteAccount}
+          onContinueWithNewVault={() => {
+            setIsSwitchingRemoteAccount(false);
+            setIsCreatingVault(true);
+          }}
+          onContinueLocally={() => setIsSwitchingRemoteAccount(false)}
+          onValidateRemoteImport={handleValidateRemoteVaultImport}
+          onConfirmRemoteImport={async () => {
+            await handleConfirmBackupImport('new');
+            setIsSwitchingRemoteAccount(false);
+          }}
+          onCancelRemoteImport={handleCancelBackupImport}
+        />
+        <Toast toast={appToast} />
+      </>
+    );
+  }
+
   if (profiles.length === 0 && !hasPassedRemoteOnboarding && !isCreatingVault) {
     return (
       <>
@@ -732,6 +833,7 @@ function App() {
           pendingImportPreview={pendingBackupImport?.preview ?? null}
           onLogin={handleOnboardingLogin}
           onRegister={handleOnboardingRegister}
+          onUseAnotherAccount={handleUseAnotherRemoteAccount}
           onContinueWithNewVault={() => {
             setHasPassedRemoteOnboarding(true);
             setIsCreatingVault(true);
@@ -768,6 +870,7 @@ function App() {
           profiles={profiles}
           pendingImportPreview={pendingBackupImport?.preview ?? null}
           onGoHome={() => setSelectedVaultId(profiles[0]?.vaultId ?? null)}
+          onUseAnotherAccount={handleUseAnotherRemoteAccount}
           onCreateNew={() => setIsCreatingVault(true)}
           onDeleteProfile={handleDeleteLocalVault}
           onImportBackup={validateBackupImport}
@@ -788,7 +891,12 @@ function App() {
     return (
       <>
         {updateBanner}
-        <UnlockPage profile={profile} onBack={() => setSelectedVaultId(null)} onUnlock={handleUnlock} />
+        <UnlockPage
+          profile={profile}
+          onBack={() => setSelectedVaultId(null)}
+          onUseAnotherAccount={handleUseAnotherRemoteAccount}
+          onUnlock={handleUnlock}
+        />
       </>
     );
   }
@@ -863,6 +971,7 @@ function App() {
           onRegisterRemote={handleRegisterRemote}
           onHome={() => setView('vault')}
           onChangeMasterPassword={handleChangeMasterPassword}
+          onChangeRemotePassword={handleChangeRemotePassword}
           onValidateRemoteVaultImport={handleValidateRemoteVaultImport}
           onValidateBackupImport={handleValidateBackupImport}
           onSwitchVault={handleSwitchVault}

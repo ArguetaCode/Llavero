@@ -107,7 +107,7 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
               ×
             </button>
         </header>
-          <form className="form-stack credential-form" onSubmit={handleSave}>
+          <form className="form-stack credential-form" autoComplete="off" onSubmit={handleSave}>
           <label className="field" htmlFor="editTitle">
             <span>Título</span>
             <input id="editTitle" value={values.title} onChange={(event) => updateValue('title', event.target.value)} />
@@ -118,16 +118,28 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
             <input id="editWebsite" value={values.website} onChange={(event) => updateValue('website', event.target.value)} />
           </label>
           {errors.website && <p className="field-error">{errors.website}</p>}
-          <label className="field" htmlFor="editUsername">
+          <label className="field" htmlFor="editCredentialUsername">
             <span>Usuario</span>
-            <input id="editUsername" value={values.username} onChange={(event) => updateValue('username', event.target.value)} />
+            <input
+              id="editCredentialUsername"
+              value={values.username}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              data-1p-ignore="true"
+              data-bwignore="true"
+              data-lpignore="true"
+              onChange={(event) => updateValue('username', event.target.value)}
+            />
           </label>
           {errors.username && <p className="field-error">{errors.username}</p>}
           <SecureField
-            id="editPassword"
+            id="editCredentialSecret"
             label="Contraseña"
             value={values.password}
             placeholder="Escribe o genera una contraseña"
+            autoComplete="new-password"
+            preventPasswordManagerFill
             onChange={(value) => updateValue('password', value)}
           />
           <p className="field-hint">Recomendado: 12+ caracteres, con mayúsculas, números y símbolos.</p>

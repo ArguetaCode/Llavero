@@ -61,7 +61,6 @@ export function AddPasswordPage({ onBack, onSave }: AddPasswordPageProps) {
         notes: values.notes.trim(),
         createdAt: now,
         updatedAt: now,
-        favorite: false,
         strength,
       });
     } catch {
@@ -84,7 +83,7 @@ export function AddPasswordPage({ onBack, onSave }: AddPasswordPageProps) {
             ×
           </button>
       </header>
-        <form className="form-stack credential-form" onSubmit={handleSubmit}>
+        <form className="form-stack credential-form" autoComplete="off" onSubmit={handleSubmit}>
         <label className="field" htmlFor="title">
           <span>Título</span>
           <input id="title" value={values.title} placeholder="Correo personal" onChange={(event) => updateValue('title', event.target.value)} />
@@ -95,16 +94,29 @@ export function AddPasswordPage({ onBack, onSave }: AddPasswordPageProps) {
           <input id="website" value={values.website} placeholder="ejemplo.com (opcional)" inputMode="url" onChange={(event) => updateValue('website', event.target.value)} />
         </label>
         {errors.website && <p className="field-error">{errors.website}</p>}
-        <label className="field" htmlFor="username">
+        <label className="field" htmlFor="credentialUsername">
           <span>Usuario</span>
-          <input id="username" value={values.username} placeholder="usuario o correo" autoComplete="off" onChange={(event) => updateValue('username', event.target.value)} />
+          <input
+            id="credentialUsername"
+            value={values.username}
+            placeholder="usuario o correo"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            data-1p-ignore="true"
+            data-bwignore="true"
+            data-lpignore="true"
+            onChange={(event) => updateValue('username', event.target.value)}
+          />
         </label>
         {errors.username && <p className="field-error">{errors.username}</p>}
         <SecureField
-          id="password"
+          id="credentialSecret"
           label="Contraseña"
           value={values.password}
           placeholder="Escribe o genera una contraseña"
+          autoComplete="new-password"
+          preventPasswordManagerFill
           onChange={(value) => updateValue('password', value)}
         />
         <p className="field-hint">Recomendado: 12+ caracteres, con mayúsculas, números y símbolos.</p>

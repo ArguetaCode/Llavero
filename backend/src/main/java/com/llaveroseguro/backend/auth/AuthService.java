@@ -1,6 +1,7 @@
 package com.llaveroseguro.backend.auth;
 
 import com.llaveroseguro.backend.auth.AuthDtos.AuthResponse;
+import com.llaveroseguro.backend.auth.AuthDtos.ChangePasswordRequest;
 import com.llaveroseguro.backend.auth.AuthDtos.LoginRequest;
 import com.llaveroseguro.backend.auth.AuthDtos.RegisterRequest;
 import com.llaveroseguro.backend.auth.AuthDtos.UserResponse;
@@ -65,6 +66,23 @@ public class AuthService {
 
   public UserResponse me(AppUser user) {
     return toResponse(user);
+  }
+
+  @Transactional
+  public AuthResponse changePassword(AuthenticatedUser authenticatedUser, ChangePasswordRequest request) {
+    AppUser user = users.findById(authenticatedUser.id())
+        .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Sesión remota inválida."));
+    if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "La contraseña actual de la cuenta no es correcta.");
+    }
+    if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash())) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "La nueva contraseña debe ser diferente de la actual.");
+    }
+
+    user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+    user.setTokenVersion(user.getTokenVersion() + 1);
+    AppUser saved = users.save(user);
+    return new AuthResponse(jwtService.createToken(new AuthenticatedUser(saved)), toResponse(saved));
   }
 
   private String normalizeEmail(String email) {

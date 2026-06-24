@@ -18,6 +18,11 @@ public class AuthDtos {
       @NotBlank(message = "La contraseña remota es obligatoria.") String password
   ) {}
 
+  public record ChangePasswordRequest(
+      @NotBlank(message = "La contraseña actual es obligatoria.") String currentPassword,
+      @NotBlank(message = "La nueva contraseña es obligatoria.") @Size(min = 10, max = 128, message = "La nueva contraseña debe tener entre 10 y 128 caracteres.") String newPassword
+  ) {}
+
   public record AuthResponse(String token, UserResponse user) {}
 
   public record UserResponse(UUID id, String email, String displayName, Instant createdAt, Instant updatedAt, Instant lastLoginAt, String status) {}

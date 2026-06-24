@@ -3,7 +3,7 @@ import type { BackupImportPreview, PasswordEntry } from '../domain/types';
 import type { VaultAudit } from '../domain/vaultAudit';
 import { Toast, type ToastMessage } from '../components/Toast';
 import { APP_VERSION } from '../app/appInfo';
-import type { LoginRemoteInput, RegisterRemoteInput, RemoteUser } from '../api/authApi';
+import type { ChangeRemotePasswordInput, LoginRemoteInput, RegisterRemoteInput, RemoteUser } from '../api/authApi';
 import type { RemoteVault } from '../api/vaultSyncApi';
 
 interface SecurityPageProps {
@@ -27,6 +27,7 @@ interface SecurityPageProps {
   vaultUpdatedAt: string;
   onAutoLockChange: (minutes: number) => void;
   onChangeMasterPassword: (currentPassword: string, nextPassword: string) => Promise<void>;
+  onChangeRemotePassword: (input: ChangeRemotePasswordInput) => Promise<void>;
   onCancelBackupImport: () => void;
   onConfirmBackupImport: (mode: 'replace-current' | 'new') => Promise<void>;
   onDeleteLocalVault: (confirmation: string) => Promise<void>;
@@ -64,6 +65,7 @@ export function SecurityPage({
   vaultUpdatedAt,
   onAutoLockChange,
   onChangeMasterPassword,
+  onChangeRemotePassword,
   onCancelBackupImport,
   onConfirmBackupImport,
   onDeleteLocalVault,
@@ -95,6 +97,10 @@ export function SecurityPage({
   const [remoteEmail, setRemoteEmail] = useState('');
   const [remoteDisplayName, setRemoteDisplayName] = useState('');
   const [remotePassword, setRemotePassword] = useState('');
+  const [currentRemotePassword, setCurrentRemotePassword] = useState('');
+  const [nextRemotePassword, setNextRemotePassword] = useState('');
+  const [nextRemotePasswordConfirmation, setNextRemotePasswordConfirmation] = useState('');
+  const [remotePasswordMessage, setRemotePasswordMessage] = useState<ToastMessage | null>(null);
   const [remoteMessage, setRemoteMessage] = useState<ToastMessage | null>(null);
   const [selectedRemoteVaultId, setSelectedRemoteVaultId] = useState('');
   const [remoteMasterPassword, setRemoteMasterPassword] = useState('');
@@ -119,7 +125,6 @@ export function SecurityPage({
     strong: 0,
     repeated: stats.repeated,
     missingWebsite: 0,
-    favorites: 0,
     updatedAt: vaultUpdatedAt,
     repeatedCountsByEntryId: {},
   };
@@ -294,6 +299,44 @@ export function SecurityPage({
     }
   }
 
+  async function handleChangeRemotePassword(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setRemotePasswordMessage(null);
+
+    if (!currentRemotePassword || !nextRemotePassword || !nextRemotePasswordConfirmation) {
+      setRemotePasswordMessage({ type: 'error', message: 'Completa las tres contraseñas de cuenta.' });
+      return;
+    }
+    if (nextRemotePassword.length < 10 || nextRemotePassword.length > 128) {
+      setRemotePasswordMessage({ type: 'error', message: 'La nueva contraseña debe tener entre 10 y 128 caracteres.' });
+      return;
+    }
+    if (nextRemotePassword !== nextRemotePasswordConfirmation) {
+      setRemotePasswordMessage({ type: 'error', message: 'La confirmación no coincide con la nueva contraseña.' });
+      return;
+    }
+    if (currentRemotePassword === nextRemotePassword) {
+      setRemotePasswordMessage({ type: 'error', message: 'La nueva contraseña debe ser diferente de la actual.' });
+      return;
+    }
+
+    setIsWorking(true);
+    try {
+      await onChangeRemotePassword({ currentPassword: currentRemotePassword, newPassword: nextRemotePassword });
+      setCurrentRemotePassword('');
+      setNextRemotePassword('');
+      setNextRemotePasswordConfirmation('');
+      setRemotePasswordMessage({ type: 'success', message: 'Contraseña de cuenta actualizada.' });
+    } catch (error) {
+      setRemotePasswordMessage({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'No se pudo cambiar la contraseña de cuenta.',
+      });
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
   async function handleRefreshRemoteSession(): Promise<void> {
     setRemoteMessage(null);
     setIsWorking(true);
@@ -392,10 +435,6 @@ export function SecurityPage({
           <div className="stat-card warning">
             <span>Sin sitio</span>
             <strong>{displayedAudit.missingWebsite}</strong>
-          </div>
-          <div className="stat-card">
-            <span>Favoritos</span>
-            <strong>{displayedAudit.favorites}</strong>
           </div>
         </div>
         <p className="muted small">Última actualización: {new Date(displayedAudit.updatedAt || vaultUpdatedAt).toLocaleString()}</p>
@@ -527,6 +566,49 @@ export function SecurityPage({
             </label>
             <button className="primary-button" type="submit" disabled={isWorking}>
               {remoteMode === 'register' ? 'Crear cuenta remota' : 'Iniciar sesión remota'}
+            </button>
+          </form>
+        )}
+        {remoteUser && (
+          <form className="form-stack" onSubmit={handleChangeRemotePassword}>
+            <h3>Cambiar contraseña de cuenta</h3>
+            <p className="field-hint">No cambia la contraseña maestra ni vuelve a cifrar la bóveda.</p>
+            <label className="field" htmlFor="currentRemoteAccountPassword">
+              <span>Contraseña actual de la cuenta</span>
+              <input
+                id="currentRemoteAccountPassword"
+                type="password"
+                value={currentRemotePassword}
+                autoComplete="current-password"
+                onChange={(event) => setCurrentRemotePassword(event.target.value)}
+              />
+            </label>
+            <label className="field" htmlFor="nextRemoteAccountPassword">
+              <span>Nueva contraseña de la cuenta</span>
+              <input
+                id="nextRemoteAccountPassword"
+                type="password"
+                value={nextRemotePassword}
+                minLength={10}
+                maxLength={128}
+                autoComplete="new-password"
+                onChange={(event) => setNextRemotePassword(event.target.value)}
+              />
+            </label>
+            <label className="field" htmlFor="confirmRemoteAccountPassword">
+              <span>Confirmar nueva contraseña</span>
+              <input
+                id="confirmRemoteAccountPassword"
+                type="password"
+                value={nextRemotePasswordConfirmation}
+                minLength={10}
+                maxLength={128}
+                autoComplete="new-password"
+                onChange={(event) => setNextRemotePasswordConfirmation(event.target.value)}
+              />
+            </label>
+            <button className="primary-button" type="submit" disabled={isWorking}>
+              {isWorking ? 'Actualizando...' : 'Cambiar contraseña de cuenta'}
             </button>
           </form>
         )}
@@ -686,7 +768,11 @@ export function SecurityPage({
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="importTitle">
           <div className="modal-panel">
             <h2 id="importTitle">Importar respaldo cifrado</h2>
-            <p>El respaldo fue descifrado correctamente. Puedes reemplazar la bóveda activa o importarlo como bóveda local separada.</p>
+            <p>
+              {pendingImportPreview.existingLocalVaultId
+                ? 'El respaldo corresponde a una bóveda local existente. Puedes actualizarla sin crear un duplicado o reemplazar la bóveda activa.'
+                : 'El respaldo fue descifrado correctamente. Puedes reemplazar la bóveda activa o importarlo como bóveda local separada.'}
+            </p>
             <div className="modal-summary">
               <span>Bóveda local actual: {activeProfileName}</span>
               <span>Fecha local: {new Date(activeProfileUpdatedAt).toLocaleString()}</span>
@@ -715,7 +801,7 @@ export function SecurityPage({
                 Cancelar
               </button>
               <button className="secondary-button" type="button" disabled={isWorking} onClick={() => handleConfirmImport('new')}>
-                Importar nueva
+                {pendingImportPreview.existingLocalVaultId ? 'Actualizar existente' : 'Importar nueva'}
               </button>
               <button
                 className="danger-button"
@@ -768,7 +854,7 @@ export function SecurityPage({
           </div>
         </div>
       )}
-      <Toast toast={backupMessage ?? masterPasswordMessage ?? remoteMessage} />
+      <Toast toast={backupMessage ?? masterPasswordMessage ?? remotePasswordMessage ?? remoteMessage} />
     </section>
   );
 }

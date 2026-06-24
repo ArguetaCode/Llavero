@@ -12,7 +12,6 @@ export interface PasswordEntry {
   notes: string;
   createdAt: string;
   updatedAt: string;
-  favorite: boolean;
   strength: PasswordStrength;
 }
 
@@ -71,6 +70,7 @@ export interface BackupImportPreview {
   remoteVaultId?: string;
   remoteDisplayName?: string;
   remoteUpdatedAt?: string;
+  existingLocalVaultId?: string;
 }
 
 export type AppView =

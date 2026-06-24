@@ -345,7 +345,7 @@ Antes de compartir una build de prueba, sigue [RELEASE_CHECKLIST.md](RELEASE_CHE
 - Sincronización manual de bóveda activa como blob cifrado, con metadata local no sensible.
 - Eliminación de la bóveda local activa sin borrar otros perfiles locales.
 - Cambio de contraseña maestra con re-cifrado completo de la bóveda.
-- Auditoría local de contraseñas débiles, repetidas, favoritas y registros incompletos.
+- Auditoría local de contraseñas débiles, repetidas y registros incompletos.
 - Manifest y service worker básico para instalación como PWA.
 
 ## Limitaciones
@@ -384,7 +384,6 @@ La pantalla Seguridad calcula métricas locales sobre la bóveda desbloqueada:
 - contraseñas débiles, medias y fuertes
 - contraseñas repetidas
 - registros sin sitio web
-- favoritos
 - última actualización
 
 La lista y el detalle muestran alertas cuando una contraseña está repetida, sin mostrar el valor repetido.

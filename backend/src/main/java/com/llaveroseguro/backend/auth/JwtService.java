@@ -33,6 +33,7 @@ public class JwtService {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("sub", user.getUsername());
     payload.put("uid", user.id().toString());
+    payload.put("ver", user.user().getTokenVersion());
     payload.put("iat", now.getEpochSecond());
     payload.put("exp", now.plusSeconds(expirationMinutes * 60).getEpochSecond());
 
@@ -43,6 +44,10 @@ public class JwtService {
   }
 
   public String subject(String token) {
+    return claims(token).subject();
+  }
+
+  public TokenClaims claims(String token) {
     String[] parts = token.split("\\.");
     if (parts.length != 3) throw new IllegalArgumentException("Token invalido.");
 
@@ -57,8 +62,12 @@ public class JwtService {
 
     Object subject = payload.get("sub");
     if (!(subject instanceof String email) || email.isBlank()) throw new IllegalArgumentException("Token invalido.");
-    return email;
+    Object version = payload.get("ver");
+    int tokenVersion = version instanceof Number number ? number.intValue() : 0;
+    return new TokenClaims(email, tokenVersion);
   }
+
+  public record TokenClaims(String subject, int tokenVersion) {}
 
   private String encodeJson(Map<String, Object> data) {
     try {

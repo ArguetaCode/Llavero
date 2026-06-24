@@ -35,6 +35,9 @@ public class AppUser {
   @Column(name = "last_login_at")
   private Instant lastLoginAt;
 
+  @Column(name = "token_version", nullable = false)
+  private int tokenVersion;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 32)
   private UserStatus status = UserStatus.ACTIVE;
@@ -98,6 +101,14 @@ public class AppUser {
 
   public void setLastLoginAt(Instant lastLoginAt) {
     this.lastLoginAt = lastLoginAt;
+  }
+
+  public int getTokenVersion() {
+    return tokenVersion;
+  }
+
+  public void setTokenVersion(int tokenVersion) {
+    this.tokenVersion = tokenVersion;
   }
 
   public UserStatus getStatus() {

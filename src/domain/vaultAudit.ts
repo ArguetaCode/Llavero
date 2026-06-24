@@ -7,7 +7,6 @@ export interface VaultAudit {
   strong: number;
   repeated: number;
   missingWebsite: number;
-  favorites: number;
   updatedAt: string;
   repeatedCountsByEntryId: Record<string, number>;
 }
@@ -34,7 +33,6 @@ export function auditVault(vault: VaultData | { entries: PasswordEntry[]; update
     strong: vault.entries.filter((entry) => entry.strength === 'strong').length,
     repeated: vault.entries.filter((entry) => (passwordCounts.get(entry.password) ?? 0) > 1).length,
     missingWebsite: vault.entries.filter((entry) => !entry.website.trim()).length,
-    favorites: vault.entries.filter((entry) => entry.favorite).length,
     updatedAt: vault.updatedAt ?? '',
     repeatedCountsByEntryId,
   };

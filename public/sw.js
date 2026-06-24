@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `llavero-seguro-${CACHE_VERSION}`;
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/icon.svg'];
 
@@ -38,21 +38,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
+  const isAppDocument = event.request.mode === 'navigate' || requestUrl.pathname === '/' || requestUrl.pathname === '/index.html';
 
-      return fetch(event.request).then((response) => {
-        if (!response.ok) {
+  if (isAppDocument) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/', clone));
+          }
           return response;
-        }
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached ?? caches.match('/'))),
+    );
+    return;
+  }
 
+  event.respondWith(
+    caches.match(event.request).then((cached) => cached ?? fetch(event.request).then((response) => {
+      if (response.ok) {
         const clone = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return response;
-      });
-    }),
+      }
+      return response;
+    })),
   );
 });
