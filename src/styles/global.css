@@ -1563,8 +1563,8 @@ h1 {
   inset: 0;
   z-index: 45;
   display: grid;
-  place-items: start center;
-  padding: calc(22px + env(safe-area-inset-top)) 18px 0;
+  place-items: end center;
+  padding: 0 18px calc(112px + env(safe-area-inset-bottom));
   pointer-events: none;
 }
 
