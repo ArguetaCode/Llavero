@@ -4,6 +4,7 @@ backend/target/
 .env
 .env.*
 !.env.example
+!.env.production.example
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

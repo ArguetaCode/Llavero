@@ -1,0 +1,4 @@
+.env
+.mvn/wrapper/apache-maven-*
+target
+

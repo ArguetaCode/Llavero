@@ -28,3 +28,47 @@ jobs:
       - name: Backend tests
         working-directory: backend
         run: ./mvnw test
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: sodi-key-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure deployment SSH key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Upload verified source
+        run: |
+          rsync -az --delete \
+            --exclude='.git/' \
+            --exclude='.env' \
+            --exclude='node_modules/' \
+            --exclude='dist/' \
+            --exclude='backend/target/' \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            ./ deploy@68.178.201.223:/opt/sodi-platform/apps/sodi-key/
+
+      - name: Deploy isolated containers
+        run: |
+          ssh -i ~/.ssh/deploy_key deploy@68.178.201.223 \
+            'cd /opt/sodi-platform/apps/sodi-key && docker compose -f compose.production.yml up -d --build --remove-orphans && docker compose -f compose.production.yml ps'
+
+      - name: Verify production health
+        run: |
+          curl --fail --silent --show-error \
+            --retry 12 --retry-all-errors --retry-delay 5 \
+            https://sodi-key.sodiconsultores.com/api/health
