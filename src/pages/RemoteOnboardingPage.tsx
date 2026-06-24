@@ -227,7 +227,7 @@ export function RemoteOnboardingPage({
                 id="onboardingDisplayName"
                 value={displayName}
                 autoComplete="off"
-                placeholder="Ej. Mefi"
+                placeholder="Ej. Juan"
                 onChange={(event) => setDisplayName(event.target.value)}
               />
             </label>
