@@ -30,7 +30,7 @@ export function SecureField({
           type={isVisible ? 'text' : 'password'}
           value={value}
           placeholder={placeholder}
-          autoComplete={autoComplete}
+          autoComplete={autoComplete ?? 'off'}
           data-1p-ignore={preventPasswordManagerFill ? 'true' : undefined}
           data-bwignore={preventPasswordManagerFill ? 'true' : undefined}
           data-lpignore={preventPasswordManagerFill ? 'true' : undefined}

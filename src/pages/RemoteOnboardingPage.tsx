@@ -49,6 +49,12 @@ export function RemoteOnboardingPage({
     if (remoteVaults.length === 1) setSelectedRemoteVaultId(remoteVaults[0].id);
   }, [remoteVaults]);
 
+  useEffect(() => {
+    if (!message) return undefined;
+    const timeoutId = window.setTimeout(() => setMessage(''), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [message]);
+
   async function handleAuth(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setMessage('');
@@ -122,7 +128,7 @@ export function RemoteOnboardingPage({
             Sesión iniciada como {remoteUser.email}. Encontramos {remoteVaults.length} bóveda{remoteVaults.length === 1 ? '' : 's'} cifrada{remoteVaults.length === 1 ? '' : 's'}.
           </p>
 
-          <form className="form-stack" onSubmit={handleRemoteImport}>
+          <form className="form-stack" autoComplete="off" onSubmit={handleRemoteImport}>
             <label className="field" htmlFor="onboardingRemoteVault">
               <span>Bóveda remota</span>
               <select
@@ -144,7 +150,7 @@ export function RemoteOnboardingPage({
                 id="onboardingMasterPassword"
                 type="password"
                 value={masterPassword}
-                autoComplete="current-password"
+                autoComplete="off"
                 onChange={(event) => setMasterPassword(event.target.value)}
               />
             </label>
@@ -213,19 +219,14 @@ export function RemoteOnboardingPage({
             Crear cuenta
           </button>
         </div>
-        <div className="guided-note">
-          {isRegisterMode
-            ? 'Crea una cuenta para respaldar bóvedas cifradas entre dispositivos.'
-            : 'Si ya tienes cuenta, entra para recuperar o sincronizar tus bóvedas.'}
-        </div>
-        <form className="form-stack" onSubmit={handleAuth}>
+        <form className="form-stack" autoComplete="off" onSubmit={handleAuth}>
           {mode === 'register' && (
             <label className="field" htmlFor="onboardingDisplayName">
               <span>Nombre</span>
               <input
                 id="onboardingDisplayName"
                 value={displayName}
-                autoComplete="name"
+                autoComplete="off"
                 placeholder="Ej. Mefi"
                 onChange={(event) => setDisplayName(event.target.value)}
               />
@@ -237,7 +238,7 @@ export function RemoteOnboardingPage({
               id="onboardingEmail"
               type="email"
               value={email}
-              autoComplete="email"
+              autoComplete="off"
               placeholder="tu@email.com"
               onChange={(event) => setEmail(event.target.value)}
             />
@@ -249,7 +250,7 @@ export function RemoteOnboardingPage({
               type="password"
               value={password}
               minLength={isRegisterMode ? 10 : undefined}
-              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+              autoComplete="off"
               onChange={(event) => setPassword(event.target.value)}
             />
             {isRegisterMode && <small className="field-hint">Mínimo 10 caracteres. No es la contraseña maestra de tu bóveda.</small>}

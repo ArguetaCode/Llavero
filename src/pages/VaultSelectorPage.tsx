@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { BackupImportPreview, LocalVaultProfile } from '../domain/types';
 
 interface VaultSelectorPageProps {
@@ -7,7 +7,7 @@ interface VaultSelectorPageProps {
   onGoHome: () => void;
   onUseAnotherAccount: () => void;
   onCreateNew: () => void;
-  onDeleteProfile: (vaultId: string, confirmation: string) => Promise<void>;
+  onDeleteProfile: (vaultId: string, masterPassword: string) => Promise<void>;
   onImportBackup: (file: File, masterPassword: string) => Promise<BackupImportPreview>;
   onCancelImport: () => void;
   onConfirmImportAsNew: () => Promise<void>;
@@ -30,10 +30,16 @@ export function VaultSelectorPage({
   const [file, setFile] = useState<File | null>(null);
   const [masterPassword, setMasterPassword] = useState('');
   const [deleteVaultId, setDeleteVaultId] = useState('');
-  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteMasterPassword, setDeleteMasterPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isWorking, setIsWorking] = useState(false);
   const [showImportForm, setShowImportForm] = useState(false);
+
+  useEffect(() => {
+    if (!message) return undefined;
+    const timeoutId = window.setTimeout(() => setMessage(''), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [message]);
 
   async function handleImport(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -58,9 +64,9 @@ export function VaultSelectorPage({
     if (!deleteVaultId) return;
     setIsWorking(true);
     try {
-      await onDeleteProfile(deleteVaultId, deleteConfirmation);
+      await onDeleteProfile(deleteVaultId, deleteMasterPassword);
       setDeleteVaultId('');
-      setDeleteConfirmation('');
+      setDeleteMasterPassword('');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'No se pudo eliminar la bóveda local.');
     } finally {
@@ -126,7 +132,7 @@ export function VaultSelectorPage({
         </button>
 
         {showImportForm && (
-          <form className="form-stack import-form" onSubmit={handleImport}>
+          <form className="form-stack import-form" autoComplete="off" onSubmit={handleImport}>
             <label className="field" htmlFor="selectorBackupFile">
               <span>Archivo de respaldo cifrado</span>
               <input
@@ -143,6 +149,7 @@ export function VaultSelectorPage({
                 id="selectorBackupPassword"
                 type="password"
                 value={masterPassword}
+                autoComplete="off"
                 onChange={(event) => setMasterPassword(event.target.value)}
               />
             </label>
@@ -181,18 +188,26 @@ export function VaultSelectorPage({
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="selectorDeleteTitle">
           <div className="modal-panel">
             <h2 id="selectorDeleteTitle">Eliminar bóveda local</h2>
-            <p>Esta acción no se puede deshacer. Escribe ELIMINAR para borrar solo esta bóveda local.</p>
-            <label className="field" htmlFor="selectorDeleteConfirmation">
-              <span>Confirmación</span>
+            <p>Esta acción no se puede deshacer. Ingresa la contraseña maestra de esta bóveda para eliminarla.</p>
+            <label className="field" htmlFor="selectorDeleteMasterPassword">
+              <span>Contraseña maestra</span>
               <input
-                id="selectorDeleteConfirmation"
-                value={deleteConfirmation}
+                id="selectorDeleteMasterPassword"
+                type="password"
+                value={deleteMasterPassword}
                 autoComplete="off"
-                onChange={(event) => setDeleteConfirmation(event.target.value)}
+                onChange={(event) => setDeleteMasterPassword(event.target.value)}
               />
             </label>
             <div className="modal-actions">
-              <button className="ghost-button" type="button" onClick={() => setDeleteVaultId('')}>
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={() => {
+                  setDeleteVaultId('');
+                  setDeleteMasterPassword('');
+                }}
+              >
                 Cancelar
               </button>
               <button className="danger-button" type="button" disabled={isWorking} onClick={handleDelete}>

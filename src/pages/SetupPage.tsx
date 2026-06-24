@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SecureField } from '../components/SecureField';
 import type { FieldErrors } from '../domain/validation';
 
@@ -13,6 +13,12 @@ export function SetupPage({ onCreateVault, onBack }: SetupPageProps) {
   const [confirmation, setConfirmation] = useState('');
   const [errors, setErrors] = useState<FieldErrors<'displayName' | 'masterPassword' | 'confirmation' | 'form'>>({});
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!Object.keys(errors).length) return undefined;
+    const timeoutId = window.setTimeout(() => setErrors({}), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [errors]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -62,7 +68,7 @@ export function SetupPage({ onCreateVault, onBack }: SetupPageProps) {
           <li>Tu contenido siempre se guarda cifrado.</li>
           <li>Si conectaste tu cuenta, podrás respaldarlo al terminar.</li>
         </ul>
-        <form className="form-stack" onSubmit={handleSubmit}>
+        <form className="form-stack" autoComplete="off" onSubmit={handleSubmit}>
           {onBack && (
             <button className="ghost-button" type="button" onClick={onBack}>
               Volver
@@ -83,7 +89,6 @@ export function SetupPage({ onCreateVault, onBack }: SetupPageProps) {
             id="masterPassword"
             label="Contraseña maestra"
             value={masterPassword}
-            autoComplete="new-password"
             onChange={setMasterPassword}
           />
           <p className="field-hint">
@@ -94,7 +99,6 @@ export function SetupPage({ onCreateVault, onBack }: SetupPageProps) {
             id="confirmation"
             label="Confirmar contraseña"
             value={confirmation}
-            autoComplete="new-password"
             onChange={setConfirmation}
           />
           <p className="field-hint">Debe ser exactamente igual a la contraseña maestra.</p>

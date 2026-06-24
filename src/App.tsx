@@ -87,6 +87,7 @@ function App() {
     preview: BackupImportPreview;
   } | null>(null);
   const remoteSyncInFlightRef = useRef(false);
+  const toastTimeoutRef = useRef<number | null>(null);
 
   const activeProfile = useMemo(
     () => profiles.find((profile) => profile.vaultId === selectedVaultId) ?? null,
@@ -100,6 +101,12 @@ function App() {
 
   useEffect(() => {
     refreshProfiles().finally(() => setIsCheckingStorage(false));
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -199,8 +206,12 @@ function App() {
   }
 
   function showToast(message: string, type: ToastMessage['type'] = 'success'): void {
+    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
     setAppToast({ type, message });
-    window.setTimeout(() => setAppToast(null), 2600);
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setAppToast(null);
+      toastTimeoutRef.current = null;
+    }, 3000);
   }
 
   function clearRemoteSessionState(): void {
@@ -258,7 +269,6 @@ function App() {
     setAccessToken(response.token);
     localStorage.setItem(REMOTE_TOKEN_STORAGE_KEY, response.token);
     setRemoteVaults(vaults);
-    showToast(vaults.length ? 'Sesión iniciada. Selecciona una bóveda.' : 'Sesión iniciada. Crea tu primera bóveda.');
     return vaults;
   }
 
@@ -440,31 +450,26 @@ function App() {
   ): Promise<'local' | 'synced' | 'sync-failed'> {
     if (!key || !activeProfile) throw new Error('La bóveda debe estar desbloqueada.');
 
-    setBusyMessage('Guardando bóveda cifrada...');
-    try {
-      const encrypted = await encryptVault(nextVault, key);
-      const nextProfile: LocalVaultProfile = {
-        ...activeProfile,
-        ...CURRENT_CRYPTO_METADATA,
-        iv: encrypted.iv,
-        encryptedVault: encrypted.encryptedVault,
-        updatedAt: nextVault.updatedAt,
-      };
-      await saveVaultProfile(nextProfile);
-      setVault(nextVault);
-      setProfiles((current) => current.map((profile) => (profile.vaultId === nextProfile.vaultId ? nextProfile : profile)));
-      if (accessToken && nextProfile.remoteVaultId) {
-        try {
-          await uploadProfileToRemote(nextProfile, accessToken);
-          return 'synced';
-        } catch {
-          return 'sync-failed';
-        }
+    const encrypted = await encryptVault(nextVault, key);
+    const nextProfile: LocalVaultProfile = {
+      ...activeProfile,
+      ...CURRENT_CRYPTO_METADATA,
+      iv: encrypted.iv,
+      encryptedVault: encrypted.encryptedVault,
+      updatedAt: nextVault.updatedAt,
+    };
+    await saveVaultProfile(nextProfile);
+    setVault(nextVault);
+    setProfiles((current) => current.map((profile) => (profile.vaultId === nextProfile.vaultId ? nextProfile : profile)));
+    if (accessToken && nextProfile.remoteVaultId) {
+      try {
+        await uploadProfileToRemote(nextProfile, accessToken);
+        return 'synced';
+      } catch {
+        return 'sync-failed';
       }
-      return 'local';
-    } finally {
-      setBusyMessage('');
     }
+    return 'local';
   }
 
   async function handleCreateVault(displayName: string, masterPassword: string): Promise<void> {
@@ -525,14 +530,14 @@ function App() {
       updatedAt: new Date().toISOString(),
     };
     const persistence = await persistVault(nextVault);
-    setSelectedEntryId(entry.id);
-    setView('detail');
+    setSelectedEntryId(null);
+    setView('vault');
     showToast(
       persistence === 'synced'
-        ? 'Contraseña guardada y sincronizada.'
+        ? 'Nueva contraseña creada y sincronizada.'
         : persistence === 'sync-failed'
-          ? 'Guardada localmente. No se pudo actualizar el respaldo remoto.'
-          : 'Contraseña guardada.',
+          ? 'Nueva contraseña creada localmente. No se pudo actualizar el respaldo remoto.'
+          : 'Nueva contraseña creada.',
       persistence === 'sync-failed' ? 'error' : 'success',
     );
   }
@@ -544,8 +549,8 @@ function App() {
       updatedAt: new Date().toISOString(),
     };
     const persistence = await persistVault(nextVault);
-    setSelectedEntryId(updatedEntry.id);
-    setView('detail');
+    setSelectedEntryId(null);
+    setView('vault');
     showToast(
       persistence === 'synced'
         ? 'Contraseña actualizada y sincronizada.'
@@ -556,8 +561,17 @@ function App() {
     );
   }
 
-  async function handleDeleteEntry(entryId: string): Promise<void> {
-    if (!vault) return;
+  async function handleDeleteEntry(entryId: string, masterPassword: string): Promise<void> {
+    if (!vault || !activeProfile) return;
+    if (!masterPassword) throw new Error('Ingresa la contraseña maestra para eliminar esta contraseña.');
+
+    try {
+      const verificationKey = await deriveKey(masterPassword, activeProfile.salt);
+      await decryptVault(activeProfile.encryptedVault, verificationKey, activeProfile.iv);
+    } catch {
+      throw new Error('La contraseña maestra no es correcta.');
+    }
+
     const nextVault: VaultData = {
       entries: vault.entries.filter((entry) => entry.id !== entryId),
       updatedAt: new Date().toISOString(),
@@ -755,6 +769,7 @@ function App() {
     setSelectedEntryId(null);
     setPendingBackupImport(null);
     setIsCreatingVault(false);
+    setIsSwitchingRemoteAccount(false);
     setView('vault');
     if (syncDownloadedAt) setLastManualDownloadAt(syncDownloadedAt);
     showToast(
@@ -770,8 +785,18 @@ function App() {
     setPendingBackupImport(null);
   }
 
-  async function handleDeleteLocalVault(vaultId: string, confirmation: string): Promise<void> {
-    if (confirmation !== 'ELIMINAR') throw new Error('Escribe ELIMINAR para confirmar.');
+  async function handleDeleteLocalVault(vaultId: string, masterPassword: string): Promise<void> {
+    if (!masterPassword) throw new Error('Ingresa la contraseña maestra para eliminar la bóveda.');
+    const profile = profiles.find((candidate) => candidate.vaultId === vaultId);
+    if (!profile) throw new Error('No se encontró la bóveda local.');
+
+    try {
+      const key = await deriveKey(masterPassword, profile.salt);
+      await decryptVault(profile.encryptedVault, key, profile.iv);
+    } catch {
+      throw new Error('La contraseña maestra no es correcta.');
+    }
+
     await deleteVaultProfile(vaultId);
     await refreshProfiles();
     if (selectedVaultId === vaultId) {
@@ -969,7 +994,6 @@ function App() {
           onLoginRemote={handleLoginRemote}
           onLogoutRemote={handleLogoutRemote}
           onRegisterRemote={handleRegisterRemote}
-          onHome={() => setView('vault')}
           onChangeMasterPassword={handleChangeMasterPassword}
           onChangeRemotePassword={handleChangeRemotePassword}
           onValidateRemoteVaultImport={handleValidateRemoteVaultImport}

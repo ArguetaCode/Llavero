@@ -30,7 +30,7 @@ services:
       DB_PASSWORD: llavero_dev_password
       JWT_SECRET: dev-only-change-this-secret-at-least-32-bytes
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-10080}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,https://satisfaction-consult-mighty-frequent.trycloudflare.com}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,https://*.trycloudflare.com}
     ports:
       - "8080:8080"
 

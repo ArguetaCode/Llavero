@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SecureField } from '../components/SecureField';
 import { StrengthBadge } from '../components/StrengthBadge';
 import { DangerModal } from '../components/DangerModal';
@@ -14,7 +14,7 @@ interface PasswordDetailPageProps {
   repeatedCount: number;
   onBack: () => void;
   onSave: (entry: PasswordEntry) => Promise<void>;
-  onDelete: (entryId: string) => Promise<void>;
+  onDelete: (entryId: string, masterPassword: string) => Promise<void>;
 }
 
 export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDelete }: PasswordDetailPageProps) {
@@ -23,6 +23,9 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [errors, setErrors] = useState<FieldErrors<'title' | 'website' | 'username' | 'password' | 'form'>>({});
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteMasterPassword, setDeleteMasterPassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   const [values, setValues] = useState<PasswordFormValues>({
     title: entry.title,
     website: entry.website,
@@ -31,6 +34,12 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
     category: entry.category,
     notes: entry.notes,
   });
+
+  useEffect(() => {
+    if (!Object.keys(errors).length) return undefined;
+    const timeoutId = window.setTimeout(() => setErrors({}), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [errors]);
 
   function updateValue<K extends keyof PasswordFormValues>(key: K, value: PasswordFormValues[K]): void {
     setValues((current) => ({ ...current, [key]: value }));
@@ -110,12 +119,12 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
           <form className="form-stack credential-form" autoComplete="off" onSubmit={handleSave}>
           <label className="field" htmlFor="editTitle">
             <span>Título</span>
-            <input id="editTitle" value={values.title} onChange={(event) => updateValue('title', event.target.value)} />
+            <input id="editTitle" value={values.title} autoComplete="off" onChange={(event) => updateValue('title', event.target.value)} />
           </label>
           {errors.title && <p className="field-error">{errors.title}</p>}
           <label className="field" htmlFor="editWebsite">
             <span>Sitio web</span>
-            <input id="editWebsite" value={values.website} onChange={(event) => updateValue('website', event.target.value)} />
+            <input id="editWebsite" value={values.website} autoComplete="off" onChange={(event) => updateValue('website', event.target.value)} />
           </label>
           {errors.website && <p className="field-error">{errors.website}</p>}
           <label className="field" htmlFor="editCredentialUsername">
@@ -178,6 +187,25 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
         </section>
       </div>
     );
+  }
+
+  async function handleConfirmDelete(): Promise<void> {
+    setDeleteError('');
+    if (!deleteMasterPassword) {
+      setDeleteError('Ingresa tu contraseña maestra.');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await onDelete(entry.id, deleteMasterPassword);
+      setIsDeleteModalOpen(false);
+      setDeleteMasterPassword('');
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'No se pudo eliminar el registro.');
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   return (
@@ -252,11 +280,33 @@ export function PasswordDetailPage({ entry, repeatedCount, onBack, onSave, onDel
       {isDeleteModalOpen && (
         <DangerModal
           title="Eliminar contraseña"
-          description="Esta acción no se puede deshacer. Se eliminará este registro y la bóveda se volverá a cifrar."
-          confirmLabel="Eliminar"
-          onCancel={() => setIsDeleteModalOpen(false)}
-          onConfirm={() => onDelete(entry.id)}
-        />
+          description="Esta acción no se puede deshacer. Confirma tu contraseña maestra para eliminar este registro y volver a cifrar la bóveda."
+          confirmLabel={isDeleting ? 'Eliminando...' : 'Eliminar'}
+          isWorking={isDeleting}
+          onCancel={() => {
+            setIsDeleteModalOpen(false);
+            setDeleteMasterPassword('');
+            setDeleteError('');
+          }}
+          onConfirm={handleConfirmDelete}
+        >
+          <label className="field" htmlFor="deleteMasterPassword">
+            <span>Contraseña maestra</span>
+            <input
+              id="deleteMasterPassword"
+              type="password"
+              value={deleteMasterPassword}
+              autoComplete="current-password"
+              disabled={isDeleting}
+              placeholder="Ingresa tu contraseña maestra"
+              onChange={(event) => {
+                setDeleteMasterPassword(event.target.value);
+                setDeleteError('');
+              }}
+            />
+          </label>
+          {deleteError && <p className="field-error">{deleteError}</p>}
+        </DangerModal>
       )}
       </section>
     </div>

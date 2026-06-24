@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SecureField } from '../components/SecureField';
 import { StrengthBadge } from '../components/StrengthBadge';
 import { generateRandomId } from '../crypto/cryptoService';
@@ -28,6 +28,12 @@ export function AddPasswordPage({ onBack, onSave }: AddPasswordPageProps) {
   const [errors, setErrors] = useState<FieldErrors<'title' | 'website' | 'username' | 'password' | 'form'>>({});
   const [isSaving, setIsSaving] = useState(false);
   const strength = evaluatePasswordStrength(values.password);
+
+  useEffect(() => {
+    if (!Object.keys(errors).length) return undefined;
+    const timeoutId = window.setTimeout(() => setErrors({}), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [errors]);
 
   function updateValue<K extends keyof PasswordFormValues>(key: K, value: PasswordFormValues[K]): void {
     setValues((current) => ({ ...current, [key]: value }));
@@ -86,12 +92,12 @@ export function AddPasswordPage({ onBack, onSave }: AddPasswordPageProps) {
         <form className="form-stack credential-form" autoComplete="off" onSubmit={handleSubmit}>
         <label className="field" htmlFor="title">
           <span>Título</span>
-          <input id="title" value={values.title} placeholder="Correo personal" onChange={(event) => updateValue('title', event.target.value)} />
+          <input id="title" value={values.title} placeholder="Correo personal" autoComplete="off" onChange={(event) => updateValue('title', event.target.value)} />
         </label>
         {errors.title && <p className="field-error">{errors.title}</p>}
         <label className="field" htmlFor="website">
           <span>Sitio web</span>
-          <input id="website" value={values.website} placeholder="ejemplo.com (opcional)" inputMode="url" onChange={(event) => updateValue('website', event.target.value)} />
+          <input id="website" value={values.website} placeholder="ejemplo.com (opcional)" inputMode="url" autoComplete="off" onChange={(event) => updateValue('website', event.target.value)} />
         </label>
         {errors.website && <p className="field-error">{errors.website}</p>}
         <label className="field" htmlFor="credentialUsername">

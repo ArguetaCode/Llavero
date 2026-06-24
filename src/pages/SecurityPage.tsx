@@ -1,8 +1,7 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BackupImportPreview, PasswordEntry } from '../domain/types';
 import type { VaultAudit } from '../domain/vaultAudit';
 import { Toast, type ToastMessage } from '../components/Toast';
-import { APP_VERSION } from '../app/appInfo';
 import type { ChangeRemotePasswordInput, LoginRemoteInput, RegisterRemoteInput, RemoteUser } from '../api/authApi';
 import type { RemoteVault } from '../api/vaultSyncApi';
 
@@ -30,7 +29,7 @@ interface SecurityPageProps {
   onChangeRemotePassword: (input: ChangeRemotePasswordInput) => Promise<void>;
   onCancelBackupImport: () => void;
   onConfirmBackupImport: (mode: 'replace-current' | 'new') => Promise<void>;
-  onDeleteLocalVault: (confirmation: string) => Promise<void>;
+  onDeleteLocalVault: (masterPassword: string) => Promise<void>;
   onExportBackup: () => Promise<void>;
   onFetchRemoteMe: () => Promise<void>;
   onListRemoteVaults: () => Promise<RemoteVault[]>;
@@ -38,7 +37,6 @@ interface SecurityPageProps {
   onLogoutRemote: () => void;
   onRegisterRemote: (input: RegisterRemoteInput) => Promise<void>;
   onLock: () => void;
-  onHome: () => void;
   onSwitchVault: () => void;
   onValidateRemoteVaultImport: (remoteVaultId: string, masterPassword: string) => Promise<BackupImportPreview>;
   onValidateBackupImport: (file: File, masterPassword: string) => Promise<BackupImportPreview>;
@@ -76,7 +74,6 @@ export function SecurityPage({
   onLogoutRemote,
   onRegisterRemote,
   onLock,
-  onHome,
   onSwitchVault,
   onValidateRemoteVaultImport,
   onValidateBackupImport,
@@ -87,7 +84,7 @@ export function SecurityPage({
   const [backupMessage, setBackupMessage] = useState<ToastMessage | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteMasterPassword, setDeleteMasterPassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [currentMasterPassword, setCurrentMasterPassword] = useState('');
   const [nextMasterPassword, setNextMasterPassword] = useState('');
@@ -105,6 +102,9 @@ export function SecurityPage({
   const [selectedRemoteVaultId, setSelectedRemoteVaultId] = useState('');
   const [remoteMasterPassword, setRemoteMasterPassword] = useState('');
   const [replaceConfirmation, setReplaceConfirmation] = useState('');
+  const [activeSecurityModal, setActiveSecurityModal] = useState<
+    'master-password' | 'remote-account' | 'sync' | 'backup' | 'local-data' | null
+  >(null);
 
   const stats = useMemo(() => {
     const passwordCounts = new Map<string, number>();
@@ -128,6 +128,18 @@ export function SecurityPage({
     updatedAt: vaultUpdatedAt,
     repeatedCountsByEntryId: {},
   };
+
+  useEffect(() => {
+    if (!backupMessage && !masterPasswordMessage && !remotePasswordMessage && !remoteMessage && !deleteError) return undefined;
+    const timeoutId = window.setTimeout(() => {
+      setBackupMessage(null);
+      setMasterPasswordMessage(null);
+      setRemotePasswordMessage(null);
+      setRemoteMessage(null);
+      setDeleteError('');
+    }, 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [backupMessage, masterPasswordMessage, remotePasswordMessage, remoteMessage, deleteError]);
 
   async function handleExportBackup(): Promise<void> {
     setBackupMessage(null);
@@ -222,7 +234,8 @@ export function SecurityPage({
     setIsWorking(true);
 
     try {
-      await onDeleteLocalVault(deleteConfirmation);
+      await onDeleteLocalVault(deleteMasterPassword);
+      setDeleteMasterPassword('');
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : 'No se pudo eliminar la bóveda local.');
       setIsWorking(false);
@@ -392,377 +405,436 @@ export function SecurityPage({
   const pendingRemoteDisplayName = pendingImportPreview?.remoteDisplayName ?? pendingImportPreview?.displayName ?? 'Bóveda importada';
   const hasPotentialConflict =
     selectedRemoteVault && activeProfileUpdatedAt && selectedRemoteVault.updatedAt !== activeProfileUpdatedAt;
+  const securityIssueCount = displayedAudit.weak + displayedAudit.repeated + displayedAudit.missingWebsite;
+  const securityStatusLabel = securityIssueCount > 0 ? `${securityIssueCount} por revisar` : 'Todo en orden';
 
   return (
-    <section className="page">
+    <section className="page security-page">
       <header className="page-header">
         <div>
           <p className="eyebrow">Estado general</p>
           <h1>Seguridad</h1>
         </div>
-        <button className="ghost-button" type="button" onClick={onHome}>
-          ← Inicio
-        </button>
       </header>
 
-      <section className="settings-panel settings-section">
-        <div className="section-heading">
-          <h2>Seguridad</h2>
-          <span className="status-pill">Auto: {autoLockMinutes} min</span>
+      <section className="settings-panel settings-section security-overview">
+        <div className="security-summary">
+          <div>
+            <p className="eyebrow">Bóveda activa</p>
+            <h2>{activeProfileName}</h2>
+            <span>Actualizada {new Date(displayedAudit.updatedAt || vaultUpdatedAt).toLocaleString()}</span>
+          </div>
+          <span className={securityIssueCount > 0 ? 'status-pill attention' : 'status-pill'}>
+            {securityStatusLabel}
+          </span>
         </div>
-        <p className="muted small">Bóveda activa: {activeProfileName}</p>
-        <div className="stats-grid">
-          <div className="stat-card">
+
+        <div className="security-stats">
+          <div className="security-total">
             <span>Total</span>
             <strong>{displayedAudit.total}</strong>
+            <small>credencial{displayedAudit.total === 1 ? '' : 'es'} guardada{displayedAudit.total === 1 ? '' : 's'}</small>
           </div>
-          <div className="stat-card warning">
-            <span>Débiles</span>
-            <strong>{displayedAudit.weak}</strong>
-          </div>
-          <div className="stat-card danger">
-            <span>Repetidas</span>
-            <strong>{displayedAudit.repeated}</strong>
-          </div>
-          <div className="stat-card">
-            <span>Medias</span>
-            <strong>{displayedAudit.medium}</strong>
-          </div>
-          <div className="stat-card">
-            <span>Fuertes</span>
-            <strong>{displayedAudit.strong}</strong>
-          </div>
-          <div className="stat-card warning">
-            <span>Sin sitio</span>
-            <strong>{displayedAudit.missingWebsite}</strong>
+          <div className="security-stat-list" aria-label="Resumen de auditoría">
+            <div className="security-stat warning">
+              <span>Débiles</span>
+              <strong>{displayedAudit.weak}</strong>
+            </div>
+            <div className="security-stat danger">
+              <span>Repetidas</span>
+              <strong>{displayedAudit.repeated}</strong>
+            </div>
+            <div className="security-stat">
+              <span>Fuertes</span>
+              <strong>{displayedAudit.strong}</strong>
+            </div>
+            <div className="security-stat">
+              <span>Medias</span>
+              <strong>{displayedAudit.medium}</strong>
+            </div>
+            <div className="security-stat warning">
+              <span>Sin sitio</span>
+              <strong>{displayedAudit.missingWebsite}</strong>
+            </div>
           </div>
         </div>
-        <p className="muted small">Última actualización: {new Date(displayedAudit.updatedAt || vaultUpdatedAt).toLocaleString()}</p>
-        <div className="recommendation-list">
+
+        <div className="security-recommendations">
           {displayedAudit.weak > 0 && <p>Cambia las contraseñas débiles.</p>}
           {displayedAudit.repeated > 0 && <p>Evita reutilizar la misma contraseña.</p>}
+          {displayedAudit.missingWebsite > 0 && <p>Completa los sitios faltantes para reconocer tus accesos.</p>}
           <p>Exporta un respaldo cifrado regularmente.</p>
         </div>
-        <label className="field" htmlFor="autoLock">
-          <span>Bloqueo automático</span>
-          <select
-            id="autoLock"
-            value={String(autoLockMinutes)}
-            onChange={(event) => onAutoLockChange(Number(event.target.value))}
-          >
-            <option value="1">1 minuto</option>
-            <option value="2">2 minutos</option>
-            <option value="5">5 minutos</option>
-            <option value="15">15 minutos</option>
-            <option value="30">30 minutos</option>
-          </select>
-        </label>
-        <button className="secondary-button full" type="button" onClick={onLock}>
-          Bloquear bóveda
-        </button>
-        <button className="secondary-button full" type="button" onClick={onSwitchVault}>
-          Cambiar bóveda
-        </button>
+
+        <div className="security-controls">
+          <label className="field" htmlFor="autoLock">
+            <span>Bloqueo automático</span>
+            <select
+              id="autoLock"
+              value={String(autoLockMinutes)}
+              onChange={(event) => onAutoLockChange(Number(event.target.value))}
+            >
+              <option value="1">1 minuto</option>
+              <option value="2">2 minutos</option>
+              <option value="5">5 minutos</option>
+              <option value="15">15 minutos</option>
+              <option value="30">30 minutos</option>
+            </select>
+          </label>
+          <div className="security-action-row">
+            <button className="secondary-button full" type="button" onClick={onLock}>
+              Bloquear
+            </button>
+            <button className="secondary-button full" type="button" onClick={onSwitchVault}>
+              Cambiar bóveda
+            </button>
+          </div>
+        </div>
       </section>
 
-      <section className="settings-panel settings-section">
-        <h2>Cambiar contraseña maestra</h2>
-        <p className="muted">Esto re-cifra toda la bóveda con un nuevo salt e IV. La bóveda seguirá desbloqueada si el cambio termina bien.</p>
-        <form className="form-stack" onSubmit={handleChangeMasterPassword}>
-          <label className="field" htmlFor="currentMasterPassword">
-            <span>Contraseña actual</span>
-            <input
-              id="currentMasterPassword"
-              type="password"
-              value={currentMasterPassword}
-              autoComplete="current-password"
-              onChange={(event) => setCurrentMasterPassword(event.target.value)}
-            />
-          </label>
-          <label className="field" htmlFor="nextMasterPassword">
-            <span>Nueva contraseña</span>
-            <input
-              id="nextMasterPassword"
-              type="password"
-              value={nextMasterPassword}
-              autoComplete="new-password"
-              onChange={(event) => setNextMasterPassword(event.target.value)}
-            />
-            <small className="field-hint">Mínimo 10 caracteres. Esta contraseña abre tu bóveda local.</small>
-          </label>
-          <label className="field" htmlFor="nextMasterPasswordConfirmation">
-            <span>Confirmar nueva contraseña</span>
-            <input
-              id="nextMasterPasswordConfirmation"
-              type="password"
-              value={nextMasterPasswordConfirmation}
-              autoComplete="new-password"
-              onChange={(event) => setNextMasterPasswordConfirmation(event.target.value)}
-            />
-          </label>
-          <button className="primary-button" type="submit" disabled={isWorking}>
-            Cambiar contraseña maestra
+      <section className="settings-panel settings-section security-actions-panel">
+        <div className="section-heading">
+          <h2>Herramientas</h2>
+          <span className="status-pill">{isRemoteAuthenticated ? 'Remoto activo' : 'Local'}</span>
+        </div>
+        <div className="security-action-list">
+          <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('master-password')}>
+            <span>Cambiar contraseña maestra</span>
+            <small>Re-cifra la bóveda local</small>
           </button>
-        </form>
+          <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('remote-account')}>
+            <span>Cuenta remota</span>
+            <small>{remoteUser ? remoteUser.email : 'Iniciar sesión o crear cuenta'}</small>
+          </button>
+          <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('sync')}>
+            <span>Sincronización cifrada</span>
+            <small>{activeProfileRemoteDisplayName ?? activeProfileRemoteVaultId ?? 'Sin vínculo remoto'}</small>
+          </button>
+          <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('backup')}>
+            <span>Respaldo</span>
+            <small>Exportar o importar archivo cifrado</small>
+          </button>
+          <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('local-data')}>
+            <span>Datos locales</span>
+            <small>Eliminar la bóveda de este navegador</small>
+          </button>
+        </div>
       </section>
 
-      <section className="settings-panel settings-section">
-        <div className="section-heading">
-          <h2>Cuenta remota</h2>
-          <span className="status-pill">{isRemoteAuthenticated ? 'Conectado' : 'Modo local'}</span>
-        </div>
-        <p className="muted">
-          Esta contraseña es para tu cuenta remota, no es tu contraseña maestra. Tu contraseña maestra nunca se envía al servidor.
-        </p>
-        {remoteUser ? (
-          <div className="modal-summary">
-            <span>Conectado como: {remoteUser.email}</span>
-            <span>Nombre: {remoteUser.displayName}</span>
-            <span>La sesión permanece activa en este dispositivo hasta cerrar sesión o vencer.</span>
-          </div>
-        ) : (
-          <form className="form-stack" onSubmit={handleRemoteAuth}>
-            <label className="field" htmlFor="remoteMode">
-              <span>Acción</span>
-              <select id="remoteMode" value={remoteMode} onChange={(event) => setRemoteMode(event.target.value as 'login' | 'register')}>
-                <option value="login">Iniciar sesión</option>
-                <option value="register">Crear cuenta remota</option>
-              </select>
-            </label>
-            {remoteMode === 'register' && (
-              <label className="field" htmlFor="remoteDisplayName">
-                <span>Nombre remoto</span>
-                <input
-                  id="remoteDisplayName"
-                  value={remoteDisplayName}
-                  autoComplete="name"
-                  onChange={(event) => setRemoteDisplayName(event.target.value)}
-                />
-              </label>
-            )}
-            <label className="field" htmlFor="remoteEmail">
-              <span>Email</span>
-              <input
-                id="remoteEmail"
-                type="email"
-                value={remoteEmail}
-                autoComplete="email"
-                onChange={(event) => setRemoteEmail(event.target.value)}
-              />
-            </label>
-            <label className="field" htmlFor="remotePassword">
-              <span>Contraseña de cuenta remota</span>
-              <input
-                id="remotePassword"
-                type="password"
-                value={remotePassword}
-                minLength={remoteMode === 'register' ? 10 : undefined}
-                autoComplete={remoteMode === 'register' ? 'new-password' : 'current-password'}
-                onChange={(event) => setRemotePassword(event.target.value)}
-              />
-              {remoteMode === 'register' && (
-                <small className="field-hint">Mínimo 10 caracteres. No es la contraseña maestra de tu bóveda.</small>
-              )}
-            </label>
-            <button className="primary-button" type="submit" disabled={isWorking}>
-              {remoteMode === 'register' ? 'Crear cuenta remota' : 'Iniciar sesión remota'}
-            </button>
-          </form>
-        )}
-        {remoteUser && (
-          <form className="form-stack" onSubmit={handleChangeRemotePassword}>
-            <h3>Cambiar contraseña de cuenta</h3>
-            <p className="field-hint">No cambia la contraseña maestra ni vuelve a cifrar la bóveda.</p>
-            <label className="field" htmlFor="currentRemoteAccountPassword">
-              <span>Contraseña actual de la cuenta</span>
-              <input
-                id="currentRemoteAccountPassword"
-                type="password"
-                value={currentRemotePassword}
-                autoComplete="current-password"
-                onChange={(event) => setCurrentRemotePassword(event.target.value)}
-              />
-            </label>
-            <label className="field" htmlFor="nextRemoteAccountPassword">
-              <span>Nueva contraseña de la cuenta</span>
-              <input
-                id="nextRemoteAccountPassword"
-                type="password"
-                value={nextRemotePassword}
-                minLength={10}
-                maxLength={128}
-                autoComplete="new-password"
-                onChange={(event) => setNextRemotePassword(event.target.value)}
-              />
-            </label>
-            <label className="field" htmlFor="confirmRemoteAccountPassword">
-              <span>Confirmar nueva contraseña</span>
-              <input
-                id="confirmRemoteAccountPassword"
-                type="password"
-                value={nextRemotePasswordConfirmation}
-                minLength={10}
-                maxLength={128}
-                autoComplete="new-password"
-                onChange={(event) => setNextRemotePasswordConfirmation(event.target.value)}
-              />
-            </label>
-            <button className="primary-button" type="submit" disabled={isWorking}>
-              {isWorking ? 'Actualizando...' : 'Cambiar contraseña de cuenta'}
-            </button>
-          </form>
-        )}
-        {remoteUser && (
-          <div className="modal-actions">
-            <button className="secondary-button" type="button" disabled={isWorking} onClick={handleRefreshRemoteSession}>
-              Verificar sesión
-            </button>
-            <button className="ghost-button" type="button" onClick={onLogoutRemote}>
-              Cerrar sesión
-            </button>
-          </div>
-        )}
-      </section>
-
-      <section className="settings-panel settings-section">
-        <div className="section-heading">
-          <h2>Sincronización cifrada</h2>
-          <span className="status-pill">{isRemoteAuthenticated ? 'Automática' : 'No conectado'}</span>
-        </div>
-        <p className="muted">
-          Tu cuenta mantiene una sola bóveda. Al iniciar sesión se compara con este dispositivo y cada cambio posterior se respalda automáticamente.
-        </p>
-        <div className="modal-summary">
-          <span>Estado: {remoteUser ? `Conectado como ${remoteUser.email}` : 'Modo local'}</span>
-          <span>Remota vinculada: {activeProfileRemoteDisplayName ?? activeProfileRemoteVaultId ?? 'Sin vínculo remoto'}</span>
-          <span>Última sync local: {formatOptionalDate(activeProfileLastRemoteSyncAt ?? null)}</span>
-          <span>Última subida local: {formatOptionalDate(activeProfileLastRemoteUploadAt ?? lastManualUploadAt)}</span>
-          <span>Última descarga local: {formatOptionalDate(activeProfileLastRemoteDownloadAt ?? lastManualDownloadAt)}</span>
-        </div>
-        <button className="secondary-button full" type="button" disabled={isWorking || !isRemoteAuthenticated} onClick={handleListRemoteVaults}>
-          Comprobar estado remoto
-        </button>
-        {remoteVaults.length > 0 && (
-          <form className="form-stack import-form" onSubmit={handleValidateRemoteImport}>
-            <label className="field" htmlFor="remoteVault">
-              <span>Bóveda remota</span>
-              <select id="remoteVault" value={selectedRemoteVaultId} onChange={(event) => setSelectedRemoteVaultId(event.target.value)}>
-                <option value="">Seleccionar</option>
-                {remoteVaults.map((remoteVault) => (
-                  <option key={remoteVault.id} value={remoteVault.id}>
-                    {remoteVault.displayName} - v{remoteVault.payloadVersion}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="remote-vault-list">
-              {remoteVaults.map((remoteVault) => {
-                const matchesActiveVault =
-                  remoteVault.id === activeProfileRemoteVaultId || remoteVault.clientVaultId === activeProfileVaultId;
-                return (
-                  <article className="remote-vault-item" key={remoteVault.id}>
-                    <strong>{remoteVault.displayName}</strong>
-                    <span>Actualizada: {new Date(remoteVault.updatedAt).toLocaleString()}</span>
-                    <span>Payload: v{remoteVault.payloadVersion}</span>
-                    <span>{matchesActiveVault ? 'Coincide con la bóveda local activa' : 'Perfil remoto separado'}</span>
-                  </article>
-                );
-              })}
+      {activeSecurityModal && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-panel settings-modal">
+            <div className="modal-title-row">
+              <h2>
+                {activeSecurityModal === 'master-password' && 'Cambiar contraseña maestra'}
+                {activeSecurityModal === 'remote-account' && 'Cuenta remota'}
+                {activeSecurityModal === 'sync' && 'Sincronización cifrada'}
+                {activeSecurityModal === 'backup' && 'Respaldo'}
+                {activeSecurityModal === 'local-data' && 'Datos locales'}
+              </h2>
+              <button className="sheet-close-button" type="button" onClick={() => setActiveSecurityModal(null)}>
+                ×
+              </button>
             </div>
-            {hasPotentialConflict && (
-              <p className="form-error">Puede existir una versión más reciente. Revisa antes de reemplazar.</p>
+
+            {activeSecurityModal === 'master-password' && (
+              <>
+                <p>Esto re-cifra toda la bóveda con un nuevo salt e IV. La bóveda seguirá desbloqueada si el cambio termina bien.</p>
+                <form className="form-stack" autoComplete="off" onSubmit={handleChangeMasterPassword}>
+                  <label className="field" htmlFor="currentMasterPassword">
+                    <span>Contraseña actual</span>
+                    <input
+                      id="currentMasterPassword"
+                      type="password"
+                      value={currentMasterPassword}
+                      autoComplete="off"
+                      onChange={(event) => setCurrentMasterPassword(event.target.value)}
+                    />
+                  </label>
+                  <label className="field" htmlFor="nextMasterPassword">
+                    <span>Nueva contraseña</span>
+                    <input
+                      id="nextMasterPassword"
+                      type="password"
+                      value={nextMasterPassword}
+                      autoComplete="off"
+                      onChange={(event) => setNextMasterPassword(event.target.value)}
+                    />
+                    <small className="field-hint">Mínimo 10 caracteres. Esta contraseña abre tu bóveda local.</small>
+                  </label>
+                  <label className="field" htmlFor="nextMasterPasswordConfirmation">
+                    <span>Confirmar nueva contraseña</span>
+                    <input
+                      id="nextMasterPasswordConfirmation"
+                      type="password"
+                      value={nextMasterPasswordConfirmation}
+                      autoComplete="off"
+                      onChange={(event) => setNextMasterPasswordConfirmation(event.target.value)}
+                    />
+                  </label>
+                  <button className="primary-button" type="submit" disabled={isWorking}>
+                    Cambiar contraseña maestra
+                  </button>
+                </form>
+              </>
             )}
-            <label className="field" htmlFor="remoteMasterPassword">
-              <span>Contraseña maestra de esa bóveda</span>
-              <input
-                id="remoteMasterPassword"
-                type="password"
-                value={remoteMasterPassword}
-                autoComplete="current-password"
-                onChange={(event) => setRemoteMasterPassword(event.target.value)}
-              />
-            </label>
-            <button className="secondary-button full" type="submit" disabled={isWorking || !isRemoteAuthenticated}>
-              Descargar bóveda remota
-            </button>
-          </form>
-        )}
-      </section>
 
-      <section className="settings-panel settings-section">
-        <div className="section-heading">
-          <h2>Respaldo</h2>
-          <span className="status-pill">{entries.length} elementos</span>
+            {activeSecurityModal === 'remote-account' && (
+              <>
+                <div className="section-heading">
+                  <p className="muted">La contraseña remota no es tu contraseña maestra. Tu contraseña maestra nunca se envía al servidor.</p>
+                  <span className="status-pill">{isRemoteAuthenticated ? 'Conectado' : 'Modo local'}</span>
+                </div>
+                {remoteUser ? (
+                  <div className="modal-summary">
+                    <span>Conectado como: {remoteUser.email}</span>
+                    <span>Nombre: {remoteUser.displayName}</span>
+                    <span>La sesión permanece activa en este dispositivo hasta cerrar sesión o vencer.</span>
+                  </div>
+                ) : (
+                  <form className="form-stack" autoComplete="off" onSubmit={handleRemoteAuth}>
+                    <label className="field" htmlFor="remoteMode">
+                      <span>Acción</span>
+                      <select id="remoteMode" value={remoteMode} onChange={(event) => setRemoteMode(event.target.value as 'login' | 'register')}>
+                        <option value="login">Iniciar sesión</option>
+                        <option value="register">Crear cuenta remota</option>
+                      </select>
+                    </label>
+                    {remoteMode === 'register' && (
+                      <label className="field" htmlFor="remoteDisplayName">
+                        <span>Nombre remoto</span>
+                        <input
+                          id="remoteDisplayName"
+                          value={remoteDisplayName}
+                          autoComplete="off"
+                          onChange={(event) => setRemoteDisplayName(event.target.value)}
+                        />
+                      </label>
+                    )}
+                    <label className="field" htmlFor="remoteEmail">
+                      <span>Email</span>
+                      <input
+                        id="remoteEmail"
+                        type="email"
+                        value={remoteEmail}
+                        autoComplete="off"
+                        onChange={(event) => setRemoteEmail(event.target.value)}
+                      />
+                    </label>
+                    <label className="field" htmlFor="remotePassword">
+                      <span>Contraseña de cuenta remota</span>
+                      <input
+                        id="remotePassword"
+                        type="password"
+                        value={remotePassword}
+                        minLength={remoteMode === 'register' ? 10 : undefined}
+                        autoComplete="off"
+                        onChange={(event) => setRemotePassword(event.target.value)}
+                      />
+                      {remoteMode === 'register' && (
+                        <small className="field-hint">Mínimo 10 caracteres. No es la contraseña maestra de tu bóveda.</small>
+                      )}
+                    </label>
+                    <button className="primary-button" type="submit" disabled={isWorking}>
+                      {remoteMode === 'register' ? 'Crear cuenta remota' : 'Iniciar sesión remota'}
+                    </button>
+                  </form>
+                )}
+                {remoteUser && (
+                  <form className="form-stack" autoComplete="off" onSubmit={handleChangeRemotePassword}>
+                    <h3>Cambiar contraseña de cuenta</h3>
+                    <p className="field-hint">No cambia la contraseña maestra ni vuelve a cifrar la bóveda.</p>
+                    <label className="field" htmlFor="currentRemoteAccountPassword">
+                      <span>Contraseña actual de la cuenta</span>
+                      <input
+                        id="currentRemoteAccountPassword"
+                        type="password"
+                        value={currentRemotePassword}
+                        autoComplete="current-password"
+                        onChange={(event) => setCurrentRemotePassword(event.target.value)}
+                      />
+                    </label>
+                    <label className="field" htmlFor="nextRemoteAccountPassword">
+                      <span>Nueva contraseña de la cuenta</span>
+                      <input
+                        id="nextRemoteAccountPassword"
+                        type="password"
+                        value={nextRemotePassword}
+                        minLength={10}
+                        maxLength={128}
+                        autoComplete="new-password"
+                        onChange={(event) => setNextRemotePassword(event.target.value)}
+                      />
+                    </label>
+                    <label className="field" htmlFor="confirmRemoteAccountPassword">
+                      <span>Confirmar nueva contraseña</span>
+                      <input
+                        id="confirmRemoteAccountPassword"
+                        type="password"
+                        value={nextRemotePasswordConfirmation}
+                        minLength={10}
+                        maxLength={128}
+                        autoComplete="new-password"
+                        onChange={(event) => setNextRemotePasswordConfirmation(event.target.value)}
+                      />
+                    </label>
+                    <button className="primary-button" type="submit" disabled={isWorking}>
+                      {isWorking ? 'Actualizando...' : 'Cambiar contraseña de cuenta'}
+                    </button>
+                  </form>
+                )}
+                {remoteUser && (
+                  <div className="modal-actions">
+                    <button className="secondary-button" type="button" disabled={isWorking} onClick={handleRefreshRemoteSession}>
+                      Verificar sesión
+                    </button>
+                    <button className="ghost-button" type="button" onClick={onLogoutRemote}>
+                      Cerrar sesión
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {activeSecurityModal === 'sync' && (
+              <>
+                <div className="section-heading">
+                  <p className="muted">
+                    Tu cuenta mantiene una sola bóveda. Al iniciar sesión se compara con este dispositivo y cada cambio posterior se respalda automáticamente.
+                  </p>
+                  <span className="status-pill">{isRemoteAuthenticated ? 'Automática' : 'No conectado'}</span>
+                </div>
+                <div className="modal-summary">
+                  <span>Estado: {remoteUser ? `Conectado como ${remoteUser.email}` : 'Modo local'}</span>
+                  <span>Remota vinculada: {activeProfileRemoteDisplayName ?? activeProfileRemoteVaultId ?? 'Sin vínculo remoto'}</span>
+                  <span>Última sync local: {formatOptionalDate(activeProfileLastRemoteSyncAt ?? null)}</span>
+                  <span>Última subida local: {formatOptionalDate(activeProfileLastRemoteUploadAt ?? lastManualUploadAt)}</span>
+                  <span>Última descarga local: {formatOptionalDate(activeProfileLastRemoteDownloadAt ?? lastManualDownloadAt)}</span>
+                </div>
+                <button className="secondary-button full" type="button" disabled={isWorking || !isRemoteAuthenticated} onClick={handleListRemoteVaults}>
+                  Comprobar estado remoto
+                </button>
+                {remoteVaults.length > 0 && (
+                  <form className="form-stack import-form" autoComplete="off" onSubmit={handleValidateRemoteImport}>
+                    <label className="field" htmlFor="remoteVault">
+                      <span>Bóveda remota</span>
+                      <select id="remoteVault" value={selectedRemoteVaultId} onChange={(event) => setSelectedRemoteVaultId(event.target.value)}>
+                        <option value="">Seleccionar</option>
+                        {remoteVaults.map((remoteVault) => (
+                          <option key={remoteVault.id} value={remoteVault.id}>
+                            {remoteVault.displayName} - v{remoteVault.payloadVersion}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="remote-vault-list">
+                      {remoteVaults.map((remoteVault) => {
+                        const matchesActiveVault =
+                          remoteVault.id === activeProfileRemoteVaultId || remoteVault.clientVaultId === activeProfileVaultId;
+                        return (
+                          <article className="remote-vault-item" key={remoteVault.id}>
+                            <strong>{remoteVault.displayName}</strong>
+                            <span>Actualizada: {new Date(remoteVault.updatedAt).toLocaleString()}</span>
+                            <span>Payload: v{remoteVault.payloadVersion}</span>
+                            <span>{matchesActiveVault ? 'Coincide con la bóveda local activa' : 'Perfil remoto separado'}</span>
+                          </article>
+                        );
+                      })}
+                    </div>
+                    {hasPotentialConflict && (
+                      <p className="form-error">Puede existir una versión más reciente. Revisa antes de reemplazar.</p>
+                    )}
+                    <label className="field" htmlFor="remoteMasterPassword">
+                      <span>Contraseña maestra de esa bóveda</span>
+                      <input
+                        id="remoteMasterPassword"
+                        type="password"
+                        value={remoteMasterPassword}
+                        autoComplete="off"
+                        onChange={(event) => setRemoteMasterPassword(event.target.value)}
+                      />
+                    </label>
+                    <button className="secondary-button full" type="submit" disabled={isWorking || !isRemoteAuthenticated}>
+                      Descargar bóveda remota
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
+
+            {activeSecurityModal === 'backup' && (
+              <div className="backup-modal-content">
+                <div className="backup-summary">
+                  <div>
+                    <p className="eyebrow">Bóveda activa</p>
+                    <h3>{activeProfileName}</h3>
+                    <span>{entries.length} elemento{entries.length === 1 ? '' : 's'} cifrado{entries.length === 1 ? '' : 's'}</span>
+                  </div>
+                  <span className="status-pill">{entries.length} elementos</span>
+                </div>
+
+                <section className="backup-card">
+                  <div>
+                    <h3>Exportar</h3>
+                    <p>Descarga una copia cifrada de esta bóveda para guardarla fuera del navegador.</p>
+                  </div>
+                  <button className="primary-button" type="button" disabled={isWorking} onClick={handleExportBackup}>
+                    Exportar respaldo
+                  </button>
+                </section>
+
+                <form className="backup-card import-form" autoComplete="off" onSubmit={handleValidateImport}>
+                  <div>
+                    <h3>Importar</h3>
+                    <p>Selecciona un archivo `.json` y usa la contraseña maestra con la que fue creado.</p>
+                  </div>
+                  <label className="backup-file-picker" htmlFor="backupFile">
+                    <input
+                      ref={fileInputRef}
+                      id="backupFile"
+                      type="file"
+                      accept="application/json,.json"
+                      onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                    />
+                    <span>{selectedFile ? selectedFile.name : 'Seleccionar archivo de respaldo'}</span>
+                    <small>{selectedFile ? 'Archivo listo para validar' : 'Formato JSON cifrado'}</small>
+                  </label>
+                  <label className="field" htmlFor="backupPassword">
+                    <span>Contraseña maestra del respaldo</span>
+                    <input
+                      id="backupPassword"
+                      type="password"
+                      value={backupPassword}
+                      autoComplete="off"
+                      onChange={(event) => setBackupPassword(event.target.value)}
+                    />
+                  </label>
+                  <button className="secondary-button full" type="submit" disabled={isWorking}>
+                    Validar e importar
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {activeSecurityModal === 'local-data' && (
+              <>
+                <p>Esto eliminará únicamente la bóveda local activa de este navegador. Las demás bóvedas locales no serán afectadas.</p>
+                <button
+                  className="danger-button full"
+                  type="button"
+                  onClick={() => {
+                    setActiveSecurityModal(null);
+                    setIsDeleteModalOpen(true);
+                  }}
+                >
+                  Eliminar bóveda local
+                </button>
+              </>
+            )}
+
+          </div>
         </div>
-        <p className="muted">
-          Exporta o importa únicamente la bóveda activa. El archivo usa nombre con fecha y nunca contiene contraseñas en texto plano.
-        </p>
-        <button className="primary-button" type="button" disabled={isWorking} onClick={handleExportBackup}>
-          Exportar respaldo cifrado
-        </button>
-        <form className="form-stack import-form" onSubmit={handleValidateImport}>
-          <label className="field" htmlFor="backupFile">
-            <span>Archivo de respaldo</span>
-            <input
-              ref={fileInputRef}
-              id="backupFile"
-              type="file"
-              accept="application/json,.json"
-              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
-            />
-          </label>
-          <label className="field" htmlFor="backupPassword">
-            <span>Contraseña maestra del respaldo</span>
-            <input
-              id="backupPassword"
-              type="password"
-              value={backupPassword}
-              autoComplete="current-password"
-              onChange={(event) => setBackupPassword(event.target.value)}
-            />
-          </label>
-          <button className="secondary-button full" type="submit" disabled={isWorking}>
-            Importar respaldo cifrado
-          </button>
-        </form>
-      </section>
-
-      <section className="settings-panel settings-section">
-        <h2>Datos locales</h2>
-        <p className="muted">
-          Esto eliminará únicamente la bóveda local activa de este navegador. Las demás bóvedas locales no serán afectadas.
-        </p>
-        <button className="danger-button full" type="button" onClick={() => setIsDeleteModalOpen(true)}>
-          Eliminar bóveda local
-        </button>
-      </section>
-
-      <section className="settings-panel settings-section">
-        <h2>Limitaciones</h2>
-        <ul className="plain-list">
-          <li>La sincronización remota es manual y opcional.</li>
-          <li>Sin contraseña maestra no se puede recuperar la bóveda ni un respaldo.</li>
-          <li>La limpieza de memoria en JavaScript depende del navegador.</li>
-        </ul>
-      </section>
-
-      <section className="settings-panel settings-section">
-        <div className="section-heading">
-          <h2>Acerca de</h2>
-          <span className="status-pill">v{APP_VERSION}</span>
-        </div>
-        <div className="modal-summary">
-          <span>App: Llavero Seguro</span>
-          <span>Estado: MVP local</span>
-          <span>No es una app auditada para producción.</span>
-        </div>
-        <ul className="plain-list">
-          <li>No autocompleta en otras apps.</li>
-          <li>La sincronización automática requiere una sesión remota activa.</li>
-          <li>No recupera la contraseña maestra.</li>
-          <li>El backend solo guarda blobs cifrados.</li>
-        </ul>
-      </section>
+      )}
 
       {pendingImportPreview && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="importTitle">
@@ -821,16 +893,16 @@ export function SecurityPage({
           <div className="modal-panel">
             <h2 id="deleteTitle">Eliminar bóveda local</h2>
             <p>
-              Esta acción no se puede deshacer. Escribe ELIMINAR para borrar únicamente la bóveda local activa de este
-              navegador.
+              Esta acción no se puede deshacer. Para continuar, confirma tu contraseña maestra de esta bóveda.
             </p>
-            <label className="field" htmlFor="deleteConfirmation">
-              <span>Confirmación</span>
+            <label className="field" htmlFor="deleteMasterPassword">
+              <span>Contraseña maestra</span>
               <input
-                id="deleteConfirmation"
-                value={deleteConfirmation}
+                id="deleteMasterPassword"
+                type="password"
+                value={deleteMasterPassword}
                 autoComplete="off"
-                onChange={(event) => setDeleteConfirmation(event.target.value)}
+                onChange={(event) => setDeleteMasterPassword(event.target.value)}
               />
             </label>
             {deleteError && <p className="form-error">{deleteError}</p>}
@@ -840,7 +912,7 @@ export function SecurityPage({
                 type="button"
                 disabled={isWorking}
                 onClick={() => {
-                  setDeleteConfirmation('');
+                  setDeleteMasterPassword('');
                   setDeleteError('');
                   setIsDeleteModalOpen(false);
                 }}
