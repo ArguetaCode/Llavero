@@ -1,4 +1,5 @@
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+export const isRemoteApiConfigured = API_BASE_URL.length > 0;
 const DEFAULT_TIMEOUT_MS = 10000;
 
 export class ApiError extends Error {
@@ -20,6 +21,10 @@ interface ErrorResponse {
 }
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  if (!isRemoteApiConfigured) {
+    throw new ApiError('La sincronización remota no está configurada. El modo local sigue disponible.', 0);
+  }
+
   const { token, timeoutMs = DEFAULT_TIMEOUT_MS, signal, ...requestOptions } = options;
   const headers = new Headers(requestOptions.headers);
   if (!headers.has('Content-Type') && options.body) {

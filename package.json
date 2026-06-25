@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "vite --mode local-only",
     "build": "tsc -b && vite build",
+    "build:local": "tsc -b && vite build --mode local-only",
     "preview": "vite preview",
     "preview:host": "vite preview --host 0.0.0.0",
     "test": "vitest run"

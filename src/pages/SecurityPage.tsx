@@ -18,6 +18,7 @@ interface SecurityPageProps {
   activeProfileLastRemoteDownloadAt?: string;
   entries: PasswordEntry[];
   isRemoteAuthenticated: boolean;
+  isRemoteSyncAvailable: boolean;
   lastManualDownloadAt: string | null;
   lastManualUploadAt: string | null;
   pendingImportPreview: BackupImportPreview | null;
@@ -55,6 +56,7 @@ export function SecurityPage({
   activeProfileLastRemoteDownloadAt,
   entries,
   isRemoteAuthenticated,
+  isRemoteSyncAvailable,
   lastManualDownloadAt,
   lastManualUploadAt,
   pendingImportPreview,
@@ -502,14 +504,18 @@ export function SecurityPage({
             <span>Cambiar contraseña maestra</span>
             <small>Re-cifra la bóveda local</small>
           </button>
-          <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('remote-account')}>
-            <span>Cuenta remota</span>
-            <small>{remoteUser ? remoteUser.email : 'Iniciar sesión o crear cuenta'}</small>
-          </button>
-          <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('sync')}>
-            <span>Sincronización cifrada</span>
-            <small>{activeProfileRemoteDisplayName ?? activeProfileRemoteVaultId ?? 'Sin vínculo remoto'}</small>
-          </button>
+          {isRemoteSyncAvailable && (
+            <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('remote-account')}>
+              <span>Cuenta remota</span>
+              <small>{remoteUser ? remoteUser.email : 'Iniciar sesión o crear cuenta'}</small>
+            </button>
+          )}
+          {isRemoteSyncAvailable && (
+            <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('sync')}>
+              <span>Sincronización cifrada</span>
+              <small>{activeProfileRemoteDisplayName ?? activeProfileRemoteVaultId ?? 'Sin vínculo remoto'}</small>
+            </button>
+          )}
           <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('backup')}>
             <span>Respaldo</span>
             <small>Exportar o importar archivo cifrado</small>

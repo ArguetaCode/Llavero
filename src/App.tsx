@@ -37,7 +37,7 @@ import {
   type RegisterRemoteInput,
   type RemoteUser,
 } from './api/authApi';
-import { ApiError } from './api/apiClient';
+import { ApiError, isRemoteApiConfigured } from './api/apiClient';
 import { createRemoteVault, listRemoteVaults, updateRemoteVault, type RemoteVault } from './api/vaultSyncApi';
 import { createRemoteVaultUploadPayload, findExistingRemoteVault, parseRemoteEncryptedPayload } from './sync/vaultSyncPayload';
 import type { AppView, BackupImportPreview, LocalVaultProfile, PasswordEntry, VaultData } from './domain/types';
@@ -67,6 +67,12 @@ function App() {
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
   const [remoteUser, setRemoteUser] = useState<RemoteUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(() => {
+    if (!isRemoteApiConfigured) {
+      localStorage.removeItem(REMOTE_TOKEN_STORAGE_KEY);
+      sessionStorage.removeItem(REMOTE_TOKEN_STORAGE_KEY);
+      return null;
+    }
+
     const existingToken = localStorage.getItem(REMOTE_TOKEN_STORAGE_KEY);
     const previousSessionToken = sessionStorage.getItem(REMOTE_TOKEN_STORAGE_KEY);
     if (!existingToken && previousSessionToken) {
@@ -110,7 +116,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!isRemoteApiConfigured || !accessToken) return;
     let isCancelled = false;
 
     Promise.all([fetchRemoteMe(accessToken), listRemoteVaults(accessToken)])
@@ -168,7 +174,7 @@ function App() {
   }, [activeProfile, selectedVaultId]);
 
   useEffect(() => {
-    if (!accessToken || !activeProfile || !vault || !cryptoKey) return undefined;
+    if (!isRemoteApiConfigured || !accessToken || !activeProfile || !vault || !cryptoKey) return undefined;
 
     async function synchronize(): Promise<void> {
       if (remoteSyncInFlightRef.current) return;
@@ -461,7 +467,7 @@ function App() {
     await saveVaultProfile(nextProfile);
     setVault(nextVault);
     setProfiles((current) => current.map((profile) => (profile.vaultId === nextProfile.vaultId ? nextProfile : profile)));
-    if (accessToken && nextProfile.remoteVaultId) {
+    if (isRemoteApiConfigured && accessToken && nextProfile.remoteVaultId) {
       try {
         await uploadProfileToRemote(nextProfile, accessToken);
         return 'synced';
@@ -489,7 +495,7 @@ function App() {
 
       await saveVaultProfile(profile);
       let syncFailed = false;
-      if (accessToken) {
+      if (isRemoteApiConfigured && accessToken) {
         try {
           await uploadProfileToRemote(profile, accessToken);
         } catch {
@@ -616,7 +622,7 @@ function App() {
     await refreshProfiles();
     setCryptoKey(newKey);
     setVault(nextVault);
-    if (accessToken && nextProfile.remoteVaultId) {
+    if (isRemoteApiConfigured && accessToken && nextProfile.remoteVaultId) {
       try {
         await uploadProfileToRemote(nextProfile, accessToken);
         showToast('Contraseña maestra cambiada y bóveda sincronizada.');
@@ -824,7 +830,7 @@ function App() {
     </div>
   ) : null;
 
-  if (isSwitchingRemoteAccount) {
+  if (isRemoteApiConfigured && isSwitchingRemoteAccount) {
     return (
       <>
         {busyMessage && <div className="busy-banner">{busyMessage}</div>}
@@ -853,7 +859,7 @@ function App() {
     );
   }
 
-  if (profiles.length === 0 && !hasPassedRemoteOnboarding && !isCreatingVault) {
+  if (isRemoteApiConfigured && profiles.length === 0 && !hasPassedRemoteOnboarding && !isCreatingVault) {
     return (
       <>
         {busyMessage && <div className="busy-banner">{busyMessage}</div>}
@@ -908,7 +914,7 @@ function App() {
           profiles={profiles}
           pendingImportPreview={pendingBackupImport?.preview ?? null}
           onGoHome={() => setSelectedVaultId(profiles[0]?.vaultId ?? null)}
-          onUseAnotherAccount={handleUseAnotherRemoteAccount}
+          onUseAnotherAccount={isRemoteApiConfigured ? handleUseAnotherRemoteAccount : undefined}
           onCreateNew={() => setIsCreatingVault(true)}
           onDeleteProfile={handleDeleteLocalVault}
           onImportBackup={validateBackupImport}
@@ -932,7 +938,7 @@ function App() {
         <UnlockPage
           profile={profile}
           onBack={() => setSelectedVaultId(null)}
-          onUseAnotherAccount={handleUseAnotherRemoteAccount}
+          onUseAnotherAccount={isRemoteApiConfigured ? handleUseAnotherRemoteAccount : undefined}
           onUnlock={handleUnlock}
         />
       </>
@@ -983,6 +989,7 @@ function App() {
           pendingImportPreview={pendingBackupImport?.preview ?? null}
           remoteUser={remoteUser}
           remoteVaults={remoteVaults}
+          isRemoteSyncAvailable={isRemoteApiConfigured}
           isRemoteAuthenticated={Boolean(accessToken && remoteUser)}
           lastManualUploadAt={lastManualUploadAt}
           lastManualDownloadAt={lastManualDownloadAt}

@@ -7,7 +7,7 @@ interface VaultSelectorPageProps {
   profiles: LocalVaultProfile[];
   pendingImportPreview: BackupImportPreview | null;
   onGoHome: () => void;
-  onUseAnotherAccount: () => void;
+  onUseAnotherAccount?: () => void;
   onCreateNew: () => void;
   onDeleteProfile: (vaultId: string, masterPassword: string) => Promise<void>;
   onImportBackup: (file: File, masterPassword: string) => Promise<BackupImportPreview>;
@@ -67,9 +67,11 @@ export function VaultSelectorPage({
           </button>
         </div>
         <p className="muted">Cada bóveda local tiene su propia contraseña maestra y datos cifrados separados.</p>
-        <button className="ghost-button" type="button" onClick={onUseAnotherAccount}>
-          Usar otra cuenta
-        </button>
+        {onUseAnotherAccount && (
+          <button className="ghost-button" type="button" onClick={onUseAnotherAccount}>
+            Usar otra cuenta
+          </button>
+        )}
 
         <div className="profile-list">
           {profiles.map((profile) => (

@@ -20,6 +20,15 @@ npm run dev
 
 Abre `http://localhost:5173` en el navegador. Para detener el servidor, presiona `Ctrl+C`.
 
+Para probar o generar una versión local pura sin backend ni opciones de cuenta remota:
+
+```bash
+npm run dev:local
+npm run build:local
+```
+
+`build:local` genera `dist/` sin URL de API remota. En ese modo la app entra directo al flujo de bóvedas locales y las opciones de cuenta/sincronización remota no se muestran.
+
 ## Ejecutar la aplicación completa
 
 Este modo levanta el frontend, el backend y PostgreSQL para habilitar cuentas remotas y sincronización cifrada.
