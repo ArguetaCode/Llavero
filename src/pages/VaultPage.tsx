@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { BrandLogo } from '../components/BrandLogo';
 import { PasswordCard } from '../components/PasswordCard';
 import { EmptyState } from '../components/EmptyState';
 import type { PasswordCategory, PasswordEntry } from '../domain/types';
@@ -47,7 +48,7 @@ export function VaultPage({ entries, repeatedCountsByEntryId, onAdd, onOpenEntry
           <p className="eyebrow">Bóveda local</p>
           <h1>Mi llavero</h1>
         </div>
-        <span className="counter">{entries.length}</span>
+        <BrandLogo className="header-brand-mark" />
       </header>
       <input
         className="search-input"

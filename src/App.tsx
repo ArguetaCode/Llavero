@@ -806,6 +806,12 @@ function App() {
     showToast('Bóveda local eliminada.');
   }
 
+  function handleBackFromSetup(): void {
+    handleCancelBackupImport();
+    setIsCreatingVault(false);
+    if (profiles.length === 0) setHasPassedRemoteOnboarding(false);
+  }
+
   if (isCheckingStorage) return <div className="boot-screen">Abriendo Llavero Seguro...</div>;
   if (storageError) return <div className="boot-screen">{storageError}</div>;
 
@@ -881,7 +887,14 @@ function App() {
       <>
         {busyMessage && <div className="busy-banner">{busyMessage}</div>}
         {updateBanner}
-        <SetupPage onCreateVault={handleCreateVault} onBack={profiles.length ? () => setIsCreatingVault(false) : undefined} />
+        <SetupPage
+          pendingImportPreview={pendingBackupImport?.preview ?? null}
+          onBack={handleBackFromSetup}
+          onCreateVault={handleCreateVault}
+          onImportBackup={validateBackupImport}
+          onCancelImport={handleCancelBackupImport}
+          onConfirmImportAsNew={() => handleConfirmBackupImport('new')}
+        />
         <Toast toast={appToast} />
       </>
     );

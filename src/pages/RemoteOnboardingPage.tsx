@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BrandLogo } from '../components/BrandLogo';
 import type { LoginRemoteInput, RegisterRemoteInput, RemoteUser } from '../api/authApi';
 import type { RemoteVault } from '../api/vaultSyncApi';
 import type { BackupImportPreview } from '../domain/types';
@@ -121,7 +122,7 @@ export function RemoteOnboardingPage({
     return (
       <main className="auth-screen">
         <section className="auth-panel selector-panel">
-          <div className="brand-mark">LS</div>
+          <BrandLogo />
           <p className="eyebrow">Cuenta conectada</p>
           <h1>Recupera tus bóvedas</h1>
           <p className="muted">
@@ -199,7 +200,7 @@ export function RemoteOnboardingPage({
   return (
     <main className="auth-screen">
       <section className="auth-panel">
-        <div className="brand-mark">LS</div>
+        <BrandLogo />
         <p className="eyebrow">Primer paso</p>
         <h1>Protege tus bóvedas entre dispositivos</h1>
         <p className="muted">

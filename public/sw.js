@@ -1,13 +1,14 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `llavero-seguro-${CACHE_VERSION}`;
-const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/icon.svg'];
+const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/logo-192.png', '/icons/logo-512.png'];
 
 function isPublicAsset(url) {
   return (
     url.pathname === '/' ||
     url.pathname === '/index.html' ||
     url.pathname === '/manifest.webmanifest' ||
-    url.pathname === '/icons/icon.svg' ||
+    url.pathname === '/icons/logo-192.png' ||
+    url.pathname === '/icons/logo-512.png' ||
     url.pathname.startsWith('/assets/')
   );
 }

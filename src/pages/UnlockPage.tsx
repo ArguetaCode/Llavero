@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BrandLogo } from '../components/BrandLogo';
 import { SecureField } from '../components/SecureField';
 import { decryptVault, deriveKey } from '../crypto/cryptoService';
 import type { LocalVaultProfile, VaultData } from '../domain/types';
@@ -45,7 +46,7 @@ export function UnlockPage({ profile, onBack, onUseAnotherAccount, onUnlock }: U
   return (
     <main className="auth-screen">
       <section className="auth-panel compact">
-        <div className="brand-mark">LS</div>
+        <BrandLogo />
         <p className="eyebrow">Bienvenido de nuevo</p>
         <h1>Abre tu bóveda</h1>
         <p className="muted">Estás entrando a <strong>{profile.displayName}</strong>.</p>

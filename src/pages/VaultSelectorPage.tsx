@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { BackupImportPanel } from '../components/BackupImportPanel';
+import { BrandLogo } from '../components/BrandLogo';
 import type { BackupImportPreview, LocalVaultProfile } from '../domain/types';
 
 interface VaultSelectorPageProps {
@@ -26,39 +28,16 @@ export function VaultSelectorPage({
   onConfirmImportAsNew,
   onSelectProfile,
 }: VaultSelectorPageProps) {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [masterPassword, setMasterPassword] = useState('');
   const [deleteVaultId, setDeleteVaultId] = useState('');
   const [deleteMasterPassword, setDeleteMasterPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isWorking, setIsWorking] = useState(false);
-  const [showImportForm, setShowImportForm] = useState(false);
 
   useEffect(() => {
     if (!message) return undefined;
     const timeoutId = window.setTimeout(() => setMessage(''), 4000);
     return () => window.clearTimeout(timeoutId);
   }, [message]);
-
-  async function handleImport(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setMessage('');
-
-    if (!file || !masterPassword) {
-      setMessage('Selecciona un respaldo e ingresa su contraseña maestra.');
-      return;
-    }
-
-    setIsWorking(true);
-    try {
-      await onImportBackup(file, masterPassword);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No se pudo importar el respaldo.');
-    } finally {
-      setIsWorking(false);
-    }
-  }
 
   async function handleDelete(): Promise<void> {
     if (!deleteVaultId) return;
@@ -74,17 +53,10 @@ export function VaultSelectorPage({
     }
   }
 
-  function resetImport(): void {
-    setFile(null);
-    setMasterPassword('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    onCancelImport();
-  }
-
   return (
     <main className="auth-screen selector-screen">
       <section className="auth-panel selector-panel">
-        <div className="brand-mark">LS</div>
+        <BrandLogo />
         <div className="selector-heading">
           <div>
             <p className="eyebrow">Elige dónde entrar</p>
@@ -127,62 +99,15 @@ export function VaultSelectorPage({
           </button>
         )}
 
-        <button className="link-button" type="button" onClick={() => setShowImportForm((current) => !current)}>
-          {showImportForm ? 'Ocultar importación' : 'Importar un respaldo existente'}
-        </button>
-
-        {showImportForm && (
-          <form className="form-stack import-form" autoComplete="off" onSubmit={handleImport}>
-            <label className="field" htmlFor="selectorBackupFile">
-              <span>Archivo de respaldo cifrado</span>
-              <input
-                ref={fileInputRef}
-                id="selectorBackupFile"
-                type="file"
-                accept="application/json,.json"
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              />
-            </label>
-            <label className="field" htmlFor="selectorBackupPassword">
-              <span>Contraseña maestra del respaldo</span>
-              <input
-                id="selectorBackupPassword"
-                type="password"
-                value={masterPassword}
-                autoComplete="off"
-                onChange={(event) => setMasterPassword(event.target.value)}
-              />
-            </label>
-            <button className="secondary-button full" type="submit" disabled={isWorking}>
-              Validar respaldo
-            </button>
-          </form>
-        )}
+        <BackupImportPanel
+          pendingImportPreview={pendingImportPreview}
+          onImportBackup={onImportBackup}
+          onCancelImport={onCancelImport}
+          onConfirmImportAsNew={onConfirmImportAsNew}
+        />
 
         {message && <p className="form-error">{message}</p>}
       </section>
-
-      {pendingImportPreview && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="selectorImportTitle">
-          <div className="modal-panel">
-            <h2 id="selectorImportTitle">Importar como nueva bóveda</h2>
-            <p>Se creará una bóveda local separada. No se reemplazará ninguna bóveda existente.</p>
-            <div className="modal-summary">
-              <span>Nombre: {pendingImportPreview.displayName ?? 'Bóveda importada'}</span>
-              <span>Elementos: {pendingImportPreview.itemCount}</span>
-              <span>Exportado: {new Date(pendingImportPreview.exportedAt).toLocaleString()}</span>
-            </div>
-            <div className="modal-actions">
-              <button className="ghost-button" type="button" onClick={resetImport}>
-                Cancelar
-              </button>
-              <button className="primary-button" type="button" onClick={onConfirmImportAsNew}>
-                Importar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {deleteVaultId && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="selectorDeleteTitle">

@@ -1,13 +1,28 @@
 import { useEffect, useState } from 'react';
+import { BackupImportPanel } from '../components/BackupImportPanel';
+import { BrandLogo } from '../components/BrandLogo';
 import { SecureField } from '../components/SecureField';
+import type { BackupImportPreview } from '../domain/types';
 import type { FieldErrors } from '../domain/validation';
 
 interface SetupPageProps {
   onCreateVault: (displayName: string, masterPassword: string) => Promise<void>;
   onBack?: () => void;
+  pendingImportPreview: BackupImportPreview | null;
+  onImportBackup: (file: File, masterPassword: string) => Promise<BackupImportPreview>;
+  onCancelImport: () => void;
+  onConfirmImportAsNew: () => Promise<void>;
 }
 
-export function SetupPage({ onCreateVault, onBack }: SetupPageProps) {
+export function SetupPage({
+  onCreateVault,
+  onBack,
+  pendingImportPreview,
+  onImportBackup,
+  onCancelImport,
+  onConfirmImportAsNew,
+}: SetupPageProps) {
+  const [mode, setMode] = useState<'create' | 'import'>('create');
   const [displayName, setDisplayName] = useState('');
   const [masterPassword, setMasterPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -57,57 +72,72 @@ export function SetupPage({ onCreateVault, onBack }: SetupPageProps) {
   return (
     <main className="auth-screen">
       <section className="auth-panel">
-        <div className="brand-mark">LS</div>
-        <p className="eyebrow">Último paso</p>
-        <h1>Crea tu bóveda</h1>
-        <p className="muted">
-          Elige un nombre y una contraseña maestra. Esta contraseña protege todo tu llavero y nunca sale de tu dispositivo.
-        </p>
-        <ul className="onboarding-checklist">
-          <li>Usa al menos 10 caracteres fáciles de recordar para ti.</li>
-          <li>Tu contenido siempre se guarda cifrado.</li>
-          <li>Si conectaste tu cuenta, podrás respaldarlo al terminar.</li>
-        </ul>
-        <form className="form-stack" autoComplete="off" onSubmit={handleSubmit}>
+        <div className="setup-topbar">
+          <BrandLogo />
           {onBack && (
-            <button className="ghost-button" type="button" onClick={onBack}>
-              Volver
+            <button className="ghost-button back-button" type="button" onClick={onBack}>
+              ← Volver
             </button>
           )}
-          <label className="field" htmlFor="displayName">
-            <span>Nombre de bóveda local</span>
-            <input
-              id="displayName"
-              value={displayName}
-              placeholder="Personal, Trabajo, Familia"
-              autoComplete="off"
-              onChange={(event) => setDisplayName(event.target.value)}
-            />
-          </label>
-          {errors.displayName && <p className="field-error">{errors.displayName}</p>}
-          <SecureField
-            id="masterPassword"
-            label="Contraseña maestra"
-            value={masterPassword}
-            onChange={setMasterPassword}
-          />
-          <p className="field-hint">
-            Mínimo 10 caracteres. Esta contraseña abre tu bóveda; si la olvidas, no se puede recuperar.
-          </p>
-          {errors.masterPassword && <p className="field-error">{errors.masterPassword}</p>}
-          <SecureField
-            id="confirmation"
-            label="Confirmar contraseña"
-            value={confirmation}
-            onChange={setConfirmation}
-          />
-          <p className="field-hint">Debe ser exactamente igual a la contraseña maestra.</p>
-          {errors.confirmation && <p className="field-error">{errors.confirmation}</p>}
-          {errors.form && <p className="form-error">{errors.form}</p>}
-          <button className="primary-button" type="submit" disabled={isSaving}>
-            {isSaving ? 'Protegiendo tu bóveda...' : 'Crear mi bóveda'}
+        </div>
+        <p className="eyebrow">Bóveda local</p>
+        <h1>{mode === 'create' ? 'Crea tu bóveda' : 'Importa tu bóveda'}</h1>
+        <p className="muted">
+          {mode === 'create'
+            ? 'Elige un nombre y una contraseña maestra para proteger tu llavero en este dispositivo.'
+            : 'Selecciona un respaldo cifrado y usa su contraseña maestra para abrirlo aquí.'}
+        </p>
+        <div className="auth-mode-switch" role="group" aria-label="Modo de bóveda local">
+          <button className={mode === 'create' ? 'chip active' : 'chip'} type="button" onClick={() => setMode('create')}>
+            Crear bóveda
           </button>
-        </form>
+          <button className={mode === 'import' ? 'chip active' : 'chip'} type="button" onClick={() => setMode('import')}>
+            Importar bóveda
+          </button>
+        </div>
+        {mode === 'create' ? (
+          <form className="form-stack" autoComplete="off" onSubmit={handleSubmit}>
+            <label className="field" htmlFor="displayName">
+              <span>Nombre de bóveda local</span>
+              <input
+                id="displayName"
+                value={displayName}
+                placeholder="Personal, Trabajo, Familia"
+                autoComplete="off"
+                onChange={(event) => setDisplayName(event.target.value)}
+              />
+            </label>
+            {errors.displayName && <p className="field-error">{errors.displayName}</p>}
+            <SecureField
+              id="masterPassword"
+              label="Contraseña maestra"
+              value={masterPassword}
+              onChange={setMasterPassword}
+            />
+            <p className="field-hint">Mínimo 10 caracteres. Si la olvidas, no se puede recuperar.</p>
+            {errors.masterPassword && <p className="field-error">{errors.masterPassword}</p>}
+            <SecureField
+              id="confirmation"
+              label="Confirmar contraseña"
+              value={confirmation}
+              onChange={setConfirmation}
+            />
+            {errors.confirmation && <p className="field-error">{errors.confirmation}</p>}
+            {errors.form && <p className="form-error">{errors.form}</p>}
+            <button className="primary-button" type="submit" disabled={isSaving}>
+              {isSaving ? 'Protegiendo tu bóveda...' : 'Crear mi bóveda'}
+            </button>
+          </form>
+        ) : (
+          <BackupImportPanel
+            pendingImportPreview={pendingImportPreview}
+            onImportBackup={onImportBackup}
+            onCancelImport={onCancelImport}
+            onConfirmImportAsNew={onConfirmImportAsNew}
+            showToggle={false}
+            submitLabel="Importar bóveda"
+          />
+        )}
       </section>
     </main>
   );
