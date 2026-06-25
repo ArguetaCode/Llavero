@@ -45,11 +45,27 @@ import type { AppView, BackupImportPreview, LocalVaultProfile, PasswordEntry, Va
 const DEFAULT_AUTO_LOCK_MINUTES = 2;
 const REMOTE_TOKEN_STORAGE_KEY = 'llavero.remoteAccessToken';
 const REMOTE_SYNC_INTERVAL_MS = 15_000;
+const INSTALL_PROMPT_DISMISSED_KEY = 'llavero.installPromptDismissed';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
 
 const emptyVault = (): VaultData => ({
   entries: [],
   updatedAt: new Date().toISOString(),
 });
+
+function isRunningStandalone(): boolean {
+  return window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+}
+
+function shouldShowIosInstallHint(): boolean {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isIos = /iphone|ipad|ipod/.test(userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return isIos && !isRunningStandalone();
+}
 
 function App() {
   const [isCheckingStorage, setIsCheckingStorage] = useState(true);
@@ -65,6 +81,8 @@ function App() {
   const [appToast, setAppToast] = useState<ToastMessage | null>(null);
   const [busyMessage, setBusyMessage] = useState('');
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isIosInstallHintVisible, setIsIosInstallHintVisible] = useState(false);
   const [remoteUser, setRemoteUser] = useState<RemoteUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(() => {
     if (!isRemoteApiConfigured) {
@@ -107,6 +125,33 @@ function App() {
 
   useEffect(() => {
     refreshProfiles().finally(() => setIsCheckingStorage(false));
+  }, []);
+
+  useEffect(() => {
+    if (localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY) === 'true' || isRunningStandalone()) return undefined;
+
+    setIsIosInstallHintVisible(shouldShowIosInstallHint());
+
+    function handleBeforeInstallPrompt(event: Event): void {
+      event.preventDefault();
+      setInstallPromptEvent(event as BeforeInstallPromptEvent);
+      setIsIosInstallHintVisible(false);
+    }
+
+    function handleAppInstalled(): void {
+      setInstallPromptEvent(null);
+      setIsIosInstallHintVisible(false);
+      localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, 'true');
+      showToast('Llavero Seguro instalado.');
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
 
   useEffect(() => {
@@ -233,6 +278,28 @@ function App() {
       registration?.waiting?.postMessage({ type: 'SKIP_WAITING' });
       window.location.reload();
     });
+  }
+
+  async function handleInstallApp(): Promise<void> {
+    if (!installPromptEvent) return;
+
+    try {
+      await installPromptEvent.prompt();
+      const choice = await installPromptEvent.userChoice;
+      setInstallPromptEvent(null);
+      if (choice.outcome === 'accepted') {
+        localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, 'true');
+        showToast('Instalando Llavero Seguro.');
+      }
+    } catch {
+      setInstallPromptEvent(null);
+    }
+  }
+
+  function handleDismissInstallPrompt(): void {
+    setInstallPromptEvent(null);
+    setIsIosInstallHintVisible(false);
+    localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, 'true');
   }
 
   async function handleRegisterRemote(input: RegisterRemoteInput): Promise<void> {
@@ -833,12 +900,32 @@ function App() {
       </button>
     </div>
   ) : null;
+  const installBanner = !isUpdateAvailable && !busyMessage && (installPromptEvent || isIosInstallHintVisible) ? (
+    <div className="install-banner" role="region" aria-label="Instalar aplicación">
+      <span>
+        {installPromptEvent
+          ? 'Instala Llavero Seguro para abrirlo más rápido desde este dispositivo.'
+          : 'Instala Llavero Seguro desde Compartir > Agregar a inicio.'}
+      </span>
+      <div className="install-banner-actions">
+        {installPromptEvent && (
+          <button type="button" onClick={handleInstallApp}>
+            Instalar
+          </button>
+        )}
+        <button className="ghost-install-button" type="button" onClick={handleDismissInstallPrompt} aria-label="Ocultar sugerencia de instalación">
+          Ahora no
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   if (isRemoteApiConfigured && isSwitchingRemoteAccount) {
     return (
       <>
         {busyMessage && <div className="busy-banner">{busyMessage}</div>}
         {updateBanner}
+        {installBanner}
         <RemoteOnboardingPage
           isRemoteApiConfigured={isRemoteApiConfigured}
           remoteUser={remoteUser}
@@ -869,6 +956,7 @@ function App() {
       <>
         {busyMessage && <div className="busy-banner">{busyMessage}</div>}
         {updateBanner}
+        {installBanner}
         <RemoteOnboardingPage
           isRemoteApiConfigured={isRemoteApiConfigured}
           remoteUser={remoteUser}
@@ -899,6 +987,7 @@ function App() {
       <>
         {busyMessage && <div className="busy-banner">{busyMessage}</div>}
         {updateBanner}
+        {installBanner}
         <SetupPage
           pendingImportPreview={pendingBackupImport?.preview ?? null}
           onBack={handleBackFromSetup}
@@ -916,6 +1005,7 @@ function App() {
     return (
       <>
         {updateBanner}
+        {installBanner}
         <VaultSelectorPage
           profiles={profiles}
           pendingImportPreview={pendingBackupImport?.preview ?? null}
@@ -941,12 +1031,14 @@ function App() {
     return (
       <>
         {updateBanner}
+        {installBanner}
         <UnlockPage
           profile={profile}
           onBack={() => setSelectedVaultId(null)}
           onUseAnotherAccount={isRemoteApiConfigured ? handleUseAnotherRemoteAccount : undefined}
           onUnlock={handleUnlock}
         />
+        <Toast toast={appToast} />
       </>
     );
   }
@@ -955,6 +1047,7 @@ function App() {
     <AppShell currentView={view} onNavigate={setView}>
       {busyMessage && <div className="busy-banner">{busyMessage}</div>}
       {updateBanner}
+      {installBanner}
       {(view === 'vault' || view === 'add' || (view === 'detail' && selectedEntry)) && (
         <VaultPage
           entries={vault.entries}

@@ -1695,6 +1695,58 @@ h1 {
   background: var(--button-primary-hover);
 }
 
+.install-banner {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  right: 18px;
+  left: 18px;
+  z-index: 24;
+  max-width: 680px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  margin: 0 auto;
+  border: 1px solid rgba(78, 195, 204, 0.42);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.install-banner-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.install-banner button {
+  min-height: 36px;
+  border: 0;
+  border-radius: var(--radius);
+  padding: 0 12px;
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.install-banner .ghost-install-button {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--muted);
+}
+
+.install-banner button:not(:disabled):hover {
+  background: var(--button-primary-hover);
+}
+
+.install-banner .ghost-install-button:not(:disabled):hover {
+  background: rgba(15, 23, 42, 0.1);
+}
+
 .toast.success {
   border-color: rgba(78, 195, 204, 0.55);
 }
@@ -1875,6 +1927,17 @@ h1 {
 
   .auth-panel {
     border-radius: 14px;
+  }
+
+  .install-banner {
+    grid-template-columns: 1fr;
+    right: 12px;
+    left: 12px;
+  }
+
+  .install-banner-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   .stats-grid {
