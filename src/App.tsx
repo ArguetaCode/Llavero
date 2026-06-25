@@ -28,11 +28,9 @@ import {
 } from './storage/vaultStorage';
 import { auditVault } from './domain/vaultAudit';
 import {
-  changeRemotePassword,
   fetchRemoteMe,
   loginRemote,
   registerRemote,
-  type ChangeRemotePasswordInput,
   type LoginRemoteInput,
   type RegisterRemoteInput,
   type RemoteUser,
@@ -304,28 +302,6 @@ function App() {
     localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, 'true');
   }
 
-  async function handleRegisterRemote(input: RegisterRemoteInput): Promise<void> {
-    const response = await registerRemote(input);
-    const vaults = await listRemoteVaults(response.token);
-    setRemoteUser(response.user);
-    setAccessToken(response.token);
-    localStorage.setItem(REMOTE_TOKEN_STORAGE_KEY, response.token);
-    setRemoteVaults(vaults);
-    await reconcileUnlockedVaultAfterAuth(response.token, vaults);
-    showToast('Cuenta creada. Tu bóveda quedó sincronizada.');
-  }
-
-  async function handleLoginRemote(input: LoginRemoteInput): Promise<void> {
-    const response = await loginRemote(input);
-    const vaults = await listRemoteVaults(response.token);
-    setRemoteUser(response.user);
-    setAccessToken(response.token);
-    localStorage.setItem(REMOTE_TOKEN_STORAGE_KEY, response.token);
-    setRemoteVaults(vaults);
-    await reconcileUnlockedVaultAfterAuth(response.token, vaults);
-    showToast('Sesión iniciada y bóveda sincronizada.');
-  }
-
   async function handleOnboardingRegister(input: RegisterRemoteInput): Promise<RemoteVault[]> {
     const response = await registerRemote(input);
     const vaults = await listRemoteVaults(response.token);
@@ -351,16 +327,12 @@ function App() {
     clearRemoteSessionState();
     setLastManualUploadAt(null);
     setLastManualDownloadAt(null);
-    showToast('Sesión remota cerrada.');
-  }
-
-  async function handleChangeRemotePassword(input: ChangeRemotePasswordInput): Promise<void> {
-    if (!accessToken) throw new Error('Inicia sesión remota primero.');
-    const response = await changeRemotePassword(accessToken, input);
-    setRemoteUser(response.user);
-    setAccessToken(response.token);
-    localStorage.setItem(REMOTE_TOKEN_STORAGE_KEY, response.token);
-    showToast('Contraseña de cuenta actualizada. Las demás sesiones fueron cerradas.');
+    setPendingBackupImport(null);
+    clearUnlockedState();
+    setSelectedVaultId(null);
+    setIsCreatingVault(false);
+    setIsSwitchingRemoteAccount(true);
+    showToast('Sesión cerrada correctamente.');
   }
 
   function handleUseAnotherRemoteAccount(): void {
@@ -369,12 +341,6 @@ function App() {
     setLastManualDownloadAt(null);
     setPendingBackupImport(null);
     setIsSwitchingRemoteAccount(true);
-  }
-
-  async function handleFetchRemoteMe(): Promise<void> {
-    if (!accessToken) throw new Error('Inicia sesión remota primero.');
-    const user = await fetchRemoteMe(accessToken);
-    setRemoteUser(user);
   }
 
   async function handleListRemoteVaults(): Promise<RemoteVault[]> {
@@ -1116,13 +1082,10 @@ function App() {
             activeProfile ? handleDeleteLocalVault(activeProfile.vaultId, confirmation) : Promise.resolve()
           }
           onExportBackup={handleExportBackup}
-          onFetchRemoteMe={handleFetchRemoteMe}
           onListRemoteVaults={handleListRemoteVaults}
-          onLoginRemote={handleLoginRemote}
           onLogoutRemote={handleLogoutRemote}
-          onRegisterRemote={handleRegisterRemote}
+          onOpenRemoteLogin={handleUseAnotherRemoteAccount}
           onChangeMasterPassword={handleChangeMasterPassword}
-          onChangeRemotePassword={handleChangeRemotePassword}
           onValidateRemoteVaultImport={handleValidateRemoteVaultImport}
           onValidateBackupImport={handleValidateBackupImport}
           onSwitchVault={handleSwitchVault}

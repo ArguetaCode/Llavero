@@ -1,6 +1,7 @@
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+export const API_BASE_URL = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL ?? '');
 export const isRemoteApiConfigured = API_BASE_URL.length > 0;
 const DEFAULT_TIMEOUT_MS = 10000;
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '0.0.0.0']);
 
 export class ApiError extends Error {
   constructor(
@@ -18,6 +19,24 @@ interface ApiRequestOptions extends RequestInit {
 
 interface ErrorResponse {
   message?: string;
+}
+
+export function resolveApiBaseUrl(configuredUrl: string, currentHostname = globalThis.location?.hostname): string {
+  const trimmedUrl = configuredUrl.replace(/\/$/, '');
+  if (!trimmedUrl) return '';
+  if (!currentHostname) return trimmedUrl;
+
+  try {
+    const apiUrl = new URL(trimmedUrl);
+    if (LOCAL_HOSTNAMES.has(apiUrl.hostname) && !LOCAL_HOSTNAMES.has(currentHostname)) {
+      apiUrl.hostname = currentHostname;
+      return apiUrl.toString().replace(/\/$/, '');
+    }
+  } catch {
+    return trimmedUrl;
+  }
+
+  return trimmedUrl;
 }
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {

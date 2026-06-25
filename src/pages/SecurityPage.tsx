@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BackupImportPreview, PasswordEntry } from '../domain/types';
 import type { VaultAudit } from '../domain/vaultAudit';
 import { Toast, type ToastMessage } from '../components/Toast';
-import type { ChangeRemotePasswordInput, LoginRemoteInput, RegisterRemoteInput, RemoteUser } from '../api/authApi';
+import type { RemoteUser } from '../api/authApi';
 import type { RemoteVault } from '../api/vaultSyncApi';
 
 interface SecurityPageProps {
@@ -27,16 +27,13 @@ interface SecurityPageProps {
   vaultUpdatedAt: string;
   onAutoLockChange: (minutes: number) => void;
   onChangeMasterPassword: (currentPassword: string, nextPassword: string) => Promise<void>;
-  onChangeRemotePassword: (input: ChangeRemotePasswordInput) => Promise<void>;
   onCancelBackupImport: () => void;
   onConfirmBackupImport: (mode: 'replace-current' | 'new') => Promise<void>;
   onDeleteLocalVault: (masterPassword: string) => Promise<void>;
   onExportBackup: () => Promise<void>;
-  onFetchRemoteMe: () => Promise<void>;
   onListRemoteVaults: () => Promise<RemoteVault[]>;
-  onLoginRemote: (input: LoginRemoteInput) => Promise<void>;
   onLogoutRemote: () => void;
-  onRegisterRemote: (input: RegisterRemoteInput) => Promise<void>;
+  onOpenRemoteLogin: () => void;
   onLock: () => void;
   onSwitchVault: () => void;
   onValidateRemoteVaultImport: (remoteVaultId: string, masterPassword: string) => Promise<BackupImportPreview>;
@@ -65,16 +62,13 @@ export function SecurityPage({
   vaultUpdatedAt,
   onAutoLockChange,
   onChangeMasterPassword,
-  onChangeRemotePassword,
   onCancelBackupImport,
   onConfirmBackupImport,
   onDeleteLocalVault,
   onExportBackup,
-  onFetchRemoteMe,
   onListRemoteVaults,
-  onLoginRemote,
   onLogoutRemote,
-  onRegisterRemote,
+  onOpenRemoteLogin,
   onLock,
   onSwitchVault,
   onValidateRemoteVaultImport,
@@ -86,26 +80,19 @@ export function SecurityPage({
   const [backupMessage, setBackupMessage] = useState<ToastMessage | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [deleteMasterPassword, setDeleteMasterPassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [currentMasterPassword, setCurrentMasterPassword] = useState('');
   const [nextMasterPassword, setNextMasterPassword] = useState('');
   const [nextMasterPasswordConfirmation, setNextMasterPasswordConfirmation] = useState('');
   const [masterPasswordMessage, setMasterPasswordMessage] = useState<ToastMessage | null>(null);
-  const [remoteMode, setRemoteMode] = useState<'login' | 'register'>('login');
-  const [remoteEmail, setRemoteEmail] = useState('');
-  const [remoteDisplayName, setRemoteDisplayName] = useState('');
-  const [remotePassword, setRemotePassword] = useState('');
-  const [currentRemotePassword, setCurrentRemotePassword] = useState('');
-  const [nextRemotePassword, setNextRemotePassword] = useState('');
-  const [nextRemotePasswordConfirmation, setNextRemotePasswordConfirmation] = useState('');
-  const [remotePasswordMessage, setRemotePasswordMessage] = useState<ToastMessage | null>(null);
   const [remoteMessage, setRemoteMessage] = useState<ToastMessage | null>(null);
   const [selectedRemoteVaultId, setSelectedRemoteVaultId] = useState('');
   const [remoteMasterPassword, setRemoteMasterPassword] = useState('');
   const [replaceConfirmation, setReplaceConfirmation] = useState('');
   const [activeSecurityModal, setActiveSecurityModal] = useState<
-    'master-password' | 'remote-account' | 'sync' | 'backup' | 'local-data' | null
+    'master-password' | 'sync' | 'backup' | 'local-data' | null
   >(null);
 
   const stats = useMemo(() => {
@@ -132,15 +119,14 @@ export function SecurityPage({
   };
 
   useEffect(() => {
-    if (!backupMessage && !masterPasswordMessage && !remotePasswordMessage && !remoteMessage) return undefined;
+    if (!backupMessage && !masterPasswordMessage && !remoteMessage) return undefined;
     const timeoutId = window.setTimeout(() => {
       setBackupMessage(null);
       setMasterPasswordMessage(null);
-      setRemotePasswordMessage(null);
       setRemoteMessage(null);
     }, 4000);
     return () => window.clearTimeout(timeoutId);
-  }, [backupMessage, masterPasswordMessage, remotePasswordMessage, remoteMessage]);
+  }, [backupMessage, masterPasswordMessage, remoteMessage]);
 
   async function handleExportBackup(): Promise<void> {
     setBackupMessage(null);
@@ -247,6 +233,29 @@ export function SecurityPage({
     }
   }
 
+  function handleOpenLogoutConfirmation(): void {
+    setActiveSecurityModal(null);
+    setRemoteMessage(null);
+    setIsLogoutModalOpen(true);
+  }
+
+  function handleConfirmLogout(): void {
+    setRemoteMessage(null);
+    setIsWorking(true);
+
+    try {
+      setActiveSecurityModal(null);
+      setIsLogoutModalOpen(false);
+      setSelectedRemoteVaultId('');
+      setRemoteMasterPassword('');
+      onLogoutRemote();
+    } catch (error) {
+      setRemoteMessage({ type: 'error', message: error instanceof Error ? error.message : 'No se pudo cerrar la sesión remota.' });
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
   async function handleChangeMasterPassword(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setMasterPasswordMessage(null);
@@ -278,91 +287,6 @@ export function SecurityPage({
         type: 'error',
         message: error instanceof Error ? error.message : 'No se pudo cambiar la contraseña maestra.',
       });
-    } finally {
-      setIsWorking(false);
-    }
-  }
-
-  async function handleRemoteAuth(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setRemoteMessage(null);
-
-    if (!remoteEmail.trim() || !remotePassword) {
-      setRemoteMessage({ type: 'error', message: 'Ingresa email y contraseña de cuenta remota.' });
-      return;
-    }
-    if (remoteMode === 'register' && !remoteDisplayName.trim()) {
-      setRemoteMessage({ type: 'error', message: 'Ingresa un nombre para la cuenta remota.' });
-      return;
-    }
-    if (remoteMode === 'register' && remotePassword.length < 10) {
-      setRemoteMessage({ type: 'error', message: 'La contraseña de cuenta remota debe tener al menos 10 caracteres.' });
-      return;
-    }
-
-    setIsWorking(true);
-    try {
-      if (remoteMode === 'register') {
-        await onRegisterRemote({ email: remoteEmail, displayName: remoteDisplayName, password: remotePassword });
-        setRemoteDisplayName('');
-      } else {
-        await onLoginRemote({ email: remoteEmail, password: remotePassword });
-      }
-      setRemotePassword('');
-      setRemoteMessage({ type: 'success', message: remoteMode === 'register' ? 'Cuenta remota creada.' : 'Sesión remota iniciada.' });
-    } catch (error) {
-      setRemoteMessage({ type: 'error', message: error instanceof Error ? error.message : 'No se pudo completar la autenticación remota.' });
-    } finally {
-      setIsWorking(false);
-    }
-  }
-
-  async function handleChangeRemotePassword(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setRemotePasswordMessage(null);
-
-    if (!currentRemotePassword || !nextRemotePassword || !nextRemotePasswordConfirmation) {
-      setRemotePasswordMessage({ type: 'error', message: 'Completa las tres contraseñas de cuenta.' });
-      return;
-    }
-    if (nextRemotePassword.length < 10 || nextRemotePassword.length > 128) {
-      setRemotePasswordMessage({ type: 'error', message: 'La nueva contraseña debe tener entre 10 y 128 caracteres.' });
-      return;
-    }
-    if (nextRemotePassword !== nextRemotePasswordConfirmation) {
-      setRemotePasswordMessage({ type: 'error', message: 'La confirmación no coincide con la nueva contraseña.' });
-      return;
-    }
-    if (currentRemotePassword === nextRemotePassword) {
-      setRemotePasswordMessage({ type: 'error', message: 'La nueva contraseña debe ser diferente de la actual.' });
-      return;
-    }
-
-    setIsWorking(true);
-    try {
-      await onChangeRemotePassword({ currentPassword: currentRemotePassword, newPassword: nextRemotePassword });
-      setCurrentRemotePassword('');
-      setNextRemotePassword('');
-      setNextRemotePasswordConfirmation('');
-      setRemotePasswordMessage({ type: 'success', message: 'Contraseña de cuenta actualizada.' });
-    } catch (error) {
-      setRemotePasswordMessage({
-        type: 'error',
-        message: error instanceof Error ? error.message : 'No se pudo cambiar la contraseña de cuenta.',
-      });
-    } finally {
-      setIsWorking(false);
-    }
-  }
-
-  async function handleRefreshRemoteSession(): Promise<void> {
-    setRemoteMessage(null);
-    setIsWorking(true);
-    try {
-      await onFetchRemoteMe();
-      setRemoteMessage({ type: 'success', message: 'Sesión remota vigente.' });
-    } catch (error) {
-      setRemoteMessage({ type: 'error', message: error instanceof Error ? error.message : 'No se pudo validar la sesión remota.' });
     } finally {
       setIsWorking(false);
     }
@@ -508,12 +432,6 @@ export function SecurityPage({
             <small>Re-cifra la bóveda local</small>
           </button>
           {isRemoteSyncAvailable && (
-            <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('remote-account')}>
-              <span>Cuenta remota</span>
-              <small>{remoteUser ? remoteUser.email : 'Iniciar sesión o crear cuenta'}</small>
-            </button>
-          )}
-          {isRemoteSyncAvailable && (
             <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('sync')}>
               <span>Sincronización cifrada</span>
               <small>{activeProfileRemoteDisplayName ?? activeProfileRemoteVaultId ?? 'Sin vínculo remoto'}</small>
@@ -528,6 +446,32 @@ export function SecurityPage({
             <small>Eliminar la bóveda de este navegador</small>
           </button>
         </div>
+        {isRemoteSyncAvailable && (
+          <section className="remote-session-card">
+            <div className="section-heading">
+              <h2>Sesión remota</h2>
+              <span className="status-pill">{isRemoteAuthenticated ? 'Conectado' : 'No conectado'}</span>
+            </div>
+            <div className="remote-session-details">
+              <span>Estado: {isRemoteAuthenticated ? 'Conectado' : 'No conectado'}</span>
+              {remoteUser && <span>Correo: {remoteUser.email}</span>}
+            </div>
+            <p>
+              {isRemoteAuthenticated
+                ? 'Cerrar sesión solo desconecta esta cuenta en este dispositivo. Tus bóvedas locales no se eliminarán.'
+                : 'Inicia sesión para sincronizar o recuperar bóvedas cifradas desde tu cuenta remota.'}
+            </p>
+            {isRemoteAuthenticated ? (
+              <button className="secondary-button remote-session-button" type="button" disabled={isWorking} onClick={handleOpenLogoutConfirmation}>
+                Cerrar sesión
+              </button>
+            ) : (
+              <button className="ghost-button remote-session-button" type="button" disabled={isWorking} onClick={onOpenRemoteLogin}>
+                Iniciar sesión remota
+              </button>
+            )}
+          </section>
+        )}
       </section>
 
       {activeSecurityModal && (
@@ -536,7 +480,6 @@ export function SecurityPage({
             <div className="modal-title-row">
               <h2>
                 {activeSecurityModal === 'master-password' && 'Cambiar contraseña maestra'}
-                {activeSecurityModal === 'remote-account' && 'Cuenta remota'}
                 {activeSecurityModal === 'sync' && 'Sincronización cifrada'}
                 {activeSecurityModal === 'backup' && 'Respaldo'}
                 {activeSecurityModal === 'local-data' && 'Datos locales'}
@@ -585,123 +528,6 @@ export function SecurityPage({
                     Cambiar contraseña maestra
                   </button>
                 </form>
-              </>
-            )}
-
-            {activeSecurityModal === 'remote-account' && (
-              <>
-                <div className="section-heading">
-                  <p className="muted">La contraseña remota no es tu contraseña maestra. Tu contraseña maestra nunca se envía al servidor.</p>
-                  <span className="status-pill">{isRemoteAuthenticated ? 'Conectado' : 'Modo local'}</span>
-                </div>
-                {remoteUser ? (
-                  <div className="modal-summary">
-                    <span>Conectado como: {remoteUser.email}</span>
-                    <span>Nombre: {remoteUser.displayName}</span>
-                    <span>La sesión permanece activa en este dispositivo hasta cerrar sesión o vencer.</span>
-                  </div>
-                ) : (
-                  <form className="form-stack" autoComplete="off" onSubmit={handleRemoteAuth}>
-                    <label className="field" htmlFor="remoteMode">
-                      <span>Acción</span>
-                      <select id="remoteMode" value={remoteMode} onChange={(event) => setRemoteMode(event.target.value as 'login' | 'register')}>
-                        <option value="login">Iniciar sesión</option>
-                        <option value="register">Crear cuenta remota</option>
-                      </select>
-                    </label>
-                    {remoteMode === 'register' && (
-                      <label className="field" htmlFor="remoteDisplayName">
-                        <span>Nombre remoto</span>
-                        <input
-                          id="remoteDisplayName"
-                          value={remoteDisplayName}
-                          autoComplete="off"
-                          onChange={(event) => setRemoteDisplayName(event.target.value)}
-                        />
-                      </label>
-                    )}
-                    <label className="field" htmlFor="remoteEmail">
-                      <span>Email</span>
-                      <input
-                        id="remoteEmail"
-                        type="email"
-                        value={remoteEmail}
-                        autoComplete="off"
-                        onChange={(event) => setRemoteEmail(event.target.value)}
-                      />
-                    </label>
-                    <label className="field" htmlFor="remotePassword">
-                      <span>Contraseña de cuenta remota</span>
-                      <input
-                        id="remotePassword"
-                        type="password"
-                        value={remotePassword}
-                        minLength={remoteMode === 'register' ? 10 : undefined}
-                        autoComplete="off"
-                        onChange={(event) => setRemotePassword(event.target.value)}
-                      />
-                      {remoteMode === 'register' && (
-                        <small className="field-hint">Mínimo 10 caracteres. No es la contraseña maestra de tu bóveda.</small>
-                      )}
-                    </label>
-                    <button className="primary-button" type="submit" disabled={isWorking}>
-                      {remoteMode === 'register' ? 'Crear cuenta remota' : 'Iniciar sesión remota'}
-                    </button>
-                  </form>
-                )}
-                {remoteUser && (
-                  <form className="form-stack" autoComplete="off" onSubmit={handleChangeRemotePassword}>
-                    <h3>Cambiar contraseña de cuenta</h3>
-                    <p className="field-hint">No cambia la contraseña maestra ni vuelve a cifrar la bóveda.</p>
-                    <label className="field" htmlFor="currentRemoteAccountPassword">
-                      <span>Contraseña actual de la cuenta</span>
-                      <input
-                        id="currentRemoteAccountPassword"
-                        type="password"
-                        value={currentRemotePassword}
-                        autoComplete="current-password"
-                        onChange={(event) => setCurrentRemotePassword(event.target.value)}
-                      />
-                    </label>
-                    <label className="field" htmlFor="nextRemoteAccountPassword">
-                      <span>Nueva contraseña de la cuenta</span>
-                      <input
-                        id="nextRemoteAccountPassword"
-                        type="password"
-                        value={nextRemotePassword}
-                        minLength={10}
-                        maxLength={128}
-                        autoComplete="new-password"
-                        onChange={(event) => setNextRemotePassword(event.target.value)}
-                      />
-                    </label>
-                    <label className="field" htmlFor="confirmRemoteAccountPassword">
-                      <span>Confirmar nueva contraseña</span>
-                      <input
-                        id="confirmRemoteAccountPassword"
-                        type="password"
-                        value={nextRemotePasswordConfirmation}
-                        minLength={10}
-                        maxLength={128}
-                        autoComplete="new-password"
-                        onChange={(event) => setNextRemotePasswordConfirmation(event.target.value)}
-                      />
-                    </label>
-                    <button className="primary-button" type="submit" disabled={isWorking}>
-                      {isWorking ? 'Actualizando...' : 'Cambiar contraseña de cuenta'}
-                    </button>
-                  </form>
-                )}
-                {remoteUser && (
-                  <div className="modal-actions">
-                    <button className="secondary-button" type="button" disabled={isWorking} onClick={handleRefreshRemoteSession}>
-                      Verificar sesión
-                    </button>
-                    <button className="ghost-button" type="button" onClick={onLogoutRemote}>
-                      Cerrar sesión
-                    </button>
-                  </div>
-                )}
               </>
             )}
 
@@ -935,7 +761,31 @@ export function SecurityPage({
           </div>
         </div>
       )}
-      <Toast toast={backupMessage ?? masterPasswordMessage ?? remotePasswordMessage ?? remoteMessage} />
+      {isLogoutModalOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="logoutTitle">
+          <div className="modal-panel">
+            <h2 id="logoutTitle">Cerrar sesión</h2>
+            <p>Se cerrará tu sesión remota en este dispositivo. Tus bóvedas locales permanecerán guardadas.</p>
+            <div className="modal-actions">
+              <button
+                className="ghost-button"
+                type="button"
+                disabled={isWorking}
+                onClick={() => {
+                  setRemoteMessage(null);
+                  setIsLogoutModalOpen(false);
+                }}
+              >
+                Cancelar
+              </button>
+              <button className="secondary-button" type="button" disabled={isWorking} onClick={handleConfirmLogout}>
+                {isWorking ? 'Cerrando...' : 'Cerrar sesión'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <Toast toast={backupMessage ?? masterPasswordMessage ?? remoteMessage} />
     </section>
   );
 }

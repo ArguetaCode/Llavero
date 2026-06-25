@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = `llavero-seguro-${CACHE_VERSION}`;
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/logo-192.png', '/icons/logo-512.png'];
 
