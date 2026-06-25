@@ -132,16 +132,15 @@ export function SecurityPage({
   };
 
   useEffect(() => {
-    if (!backupMessage && !masterPasswordMessage && !remotePasswordMessage && !remoteMessage && !deleteError) return undefined;
+    if (!backupMessage && !masterPasswordMessage && !remotePasswordMessage && !remoteMessage) return undefined;
     const timeoutId = window.setTimeout(() => {
       setBackupMessage(null);
       setMasterPasswordMessage(null);
       setRemotePasswordMessage(null);
       setRemoteMessage(null);
-      setDeleteError('');
     }, 4000);
     return () => window.clearTimeout(timeoutId);
-  }, [backupMessage, masterPasswordMessage, remotePasswordMessage, remoteMessage, deleteError]);
+  }, [backupMessage, masterPasswordMessage, remotePasswordMessage, remoteMessage]);
 
   async function handleExportBackup(): Promise<void> {
     setBackupMessage(null);
@@ -238,8 +237,12 @@ export function SecurityPage({
     try {
       await onDeleteLocalVault(deleteMasterPassword);
       setDeleteMasterPassword('');
+      setDeleteError('');
+      setIsDeleteModalOpen(false);
+      setBackupMessage({ type: 'success', message: 'Bóveda local eliminada correctamente.' });
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : 'No se pudo eliminar la bóveda local.');
+    } finally {
       setIsWorking(false);
     }
   }
@@ -926,7 +929,7 @@ export function SecurityPage({
                 Cancelar
               </button>
               <button className="danger-button" type="button" disabled={isWorking} onClick={handleDeleteLocalVault}>
-                Eliminar
+                {isWorking ? 'Eliminando...' : 'Eliminar'}
               </button>
             </div>
           </div>

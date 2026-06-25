@@ -34,13 +34,14 @@ export function VaultSelectorPage({
   const [isWorking, setIsWorking] = useState(false);
 
   useEffect(() => {
-    if (!message) return undefined;
+    if (!message || deleteVaultId) return undefined;
     const timeoutId = window.setTimeout(() => setMessage(''), 4000);
     return () => window.clearTimeout(timeoutId);
-  }, [message]);
+  }, [deleteVaultId, message]);
 
   async function handleDelete(): Promise<void> {
     if (!deleteVaultId) return;
+    setMessage('');
     setIsWorking(true);
     try {
       await onDeleteProfile(deleteVaultId, deleteMasterPassword);
@@ -108,7 +109,7 @@ export function VaultSelectorPage({
           onConfirmImportAsNew={onConfirmImportAsNew}
         />
 
-        {message && <p className="form-error">{message}</p>}
+        {message && !deleteVaultId && <p className="form-error">{message}</p>}
       </section>
 
       {deleteVaultId && (
@@ -126,19 +127,22 @@ export function VaultSelectorPage({
                 onChange={(event) => setDeleteMasterPassword(event.target.value)}
               />
             </label>
+            {message && <p className="form-error">{message}</p>}
             <div className="modal-actions">
               <button
                 className="ghost-button"
                 type="button"
+                disabled={isWorking}
                 onClick={() => {
                   setDeleteVaultId('');
                   setDeleteMasterPassword('');
+                  setMessage('');
                 }}
               >
                 Cancelar
               </button>
               <button className="danger-button" type="button" disabled={isWorking} onClick={handleDelete}>
-                Eliminar
+                {isWorking ? 'Eliminando...' : 'Eliminar'}
               </button>
             </div>
           </div>

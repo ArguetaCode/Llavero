@@ -243,16 +243,18 @@ function App() {
     return () => window.clearInterval(intervalId);
   }, [accessToken, activeProfile?.updatedAt, cryptoKey, selectedVaultId, vault?.updatedAt]);
 
-  async function refreshProfiles(): Promise<void> {
+  async function refreshProfiles(autoSelectSingleProfile = true): Promise<LocalVaultProfile[]> {
     try {
       const nextProfiles = await listVaultProfiles();
       const sortedProfiles = nextProfiles.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
       setProfiles(sortedProfiles);
-      if (sortedProfiles.length === 1) {
+      if (autoSelectSingleProfile && sortedProfiles.length === 1) {
         setSelectedVaultId((current) => current ?? sortedProfiles[0].vaultId);
       }
+      return sortedProfiles;
     } catch {
       setStorageError('No se pudo abrir el almacenamiento local.');
+      return [];
     }
   }
 
@@ -871,12 +873,18 @@ function App() {
     }
 
     await deleteVaultProfile(vaultId);
-    await refreshProfiles();
+    const nextProfiles = await refreshProfiles(false);
     if (selectedVaultId === vaultId) {
       clearUnlockedState();
       setSelectedVaultId(null);
     }
-    showToast('Bóveda local eliminada.');
+    if (nextProfiles.length === 0) {
+      clearUnlockedState();
+      setSelectedVaultId(null);
+      setIsCreatingVault(true);
+      setHasPassedRemoteOnboarding(true);
+    }
+    showToast('Bóveda local eliminada correctamente.');
   }
 
   function handleBackFromSetup(): void {
