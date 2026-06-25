@@ -5,6 +5,7 @@ import type { RemoteVault } from '../api/vaultSyncApi';
 import type { BackupImportPreview } from '../domain/types';
 
 interface RemoteOnboardingPageProps {
+  isRemoteApiConfigured: boolean;
   remoteUser: RemoteUser | null;
   remoteVaults: RemoteVault[];
   pendingImportPreview: BackupImportPreview | null;
@@ -19,6 +20,7 @@ interface RemoteOnboardingPageProps {
 }
 
 export function RemoteOnboardingPage({
+  isRemoteApiConfigured,
   remoteUser,
   remoteVaults,
   pendingImportPreview,
@@ -204,65 +206,76 @@ export function RemoteOnboardingPage({
         <p className="eyebrow">Primer paso</p>
         <h1>Protege tus bóvedas entre dispositivos</h1>
         <p className="muted">
-          Crea una cuenta o inicia sesión. El servidor solo recibirá bóvedas cifradas; tu contraseña maestra nunca se envía.
+          {isRemoteApiConfigured
+            ? 'Crea una cuenta o inicia sesión. El servidor solo recibirá bóvedas cifradas; tu contraseña maestra nunca se envía.'
+            : 'Crea una bóveda local en este dispositivo. Podrás importar respaldos cifrados cuando lo necesites.'}
         </p>
-        <div className="auth-mode-switch" role="group" aria-label="Tipo de acceso">
-          <button className={mode === 'login' ? 'chip active' : 'chip'} type="button" onClick={() => {
-            setMode('login');
-            setMessage('');
-          }}>
-            Iniciar sesión
-          </button>
-          <button className={mode === 'register' ? 'chip active' : 'chip'} type="button" onClick={() => {
-            setMode('register');
-            setMessage('');
-          }}>
-            Crear cuenta
-          </button>
-        </div>
-        <form className="form-stack" autoComplete="off" onSubmit={handleAuth}>
-          {mode === 'register' && (
-            <label className="field" htmlFor="onboardingDisplayName">
-              <span>Nombre</span>
-              <input
-                id="onboardingDisplayName"
-                value={displayName}
-                autoComplete="off"
-                placeholder="Ej. Juan"
-                onChange={(event) => setDisplayName(event.target.value)}
-              />
-            </label>
-          )}
-          <label className="field" htmlFor="onboardingEmail">
-            <span>Email</span>
-            <input
-              id="onboardingEmail"
-              type="email"
-              value={email}
-              autoComplete="off"
-              placeholder="tu@email.com"
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </label>
-          <label className="field" htmlFor="onboardingRemotePassword">
-            <span>Contraseña de cuenta remota</span>
-            <input
-              id="onboardingRemotePassword"
-              type="password"
-              value={password}
-              minLength={isRegisterMode ? 10 : undefined}
-              autoComplete="off"
-              onChange={(event) => setPassword(event.target.value)}
-            />
-            {isRegisterMode && <small className="field-hint">Mínimo 10 caracteres. No es la contraseña maestra de tu bóveda.</small>}
-          </label>
-          {message && <p className="form-error">{message}</p>}
-          <button className="primary-button" type="submit" disabled={isWorking || !canSubmit}>
-            {isWorking ? 'Conectando...' : mode === 'register' ? 'Crear cuenta y continuar' : 'Iniciar sesión'}
-          </button>
-        </form>
-        <button className="link-button onboarding-skip" type="button" disabled={isWorking} onClick={onContinueLocally}>
-          Continuar solo en este dispositivo
+        {isRemoteApiConfigured && (
+          <>
+            <div className="auth-mode-switch" role="group" aria-label="Tipo de acceso">
+              <button className={mode === 'login' ? 'chip active' : 'chip'} type="button" onClick={() => {
+                setMode('login');
+                setMessage('');
+              }}>
+                Iniciar sesión
+              </button>
+              <button className={mode === 'register' ? 'chip active' : 'chip'} type="button" onClick={() => {
+                setMode('register');
+                setMessage('');
+              }}>
+                Crear cuenta
+              </button>
+            </div>
+            <form className="form-stack" autoComplete="off" onSubmit={handleAuth}>
+              {mode === 'register' && (
+                <label className="field" htmlFor="onboardingDisplayName">
+                  <span>Nombre</span>
+                  <input
+                    id="onboardingDisplayName"
+                    value={displayName}
+                    autoComplete="off"
+                    placeholder="Ej. Juan"
+                    onChange={(event) => setDisplayName(event.target.value)}
+                  />
+                </label>
+              )}
+              <label className="field" htmlFor="onboardingEmail">
+                <span>Email</span>
+                <input
+                  id="onboardingEmail"
+                  type="email"
+                  value={email}
+                  autoComplete="off"
+                  placeholder="tu@email.com"
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              </label>
+              <label className="field" htmlFor="onboardingRemotePassword">
+                <span>Contraseña de cuenta remota</span>
+                <input
+                  id="onboardingRemotePassword"
+                  type="password"
+                  value={password}
+                  minLength={isRegisterMode ? 10 : undefined}
+                  autoComplete="off"
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+                {isRegisterMode && <small className="field-hint">Mínimo 10 caracteres. No es la contraseña maestra de tu bóveda.</small>}
+              </label>
+              {message && <p className="form-error">{message}</p>}
+              <button className="primary-button" type="submit" disabled={isWorking || !canSubmit}>
+                {isWorking ? 'Conectando...' : mode === 'register' ? 'Crear cuenta y continuar' : 'Iniciar sesión'}
+              </button>
+            </form>
+          </>
+        )}
+        <button
+          className={isRemoteApiConfigured ? 'link-button onboarding-skip' : 'primary-button onboarding-skip'}
+          type="button"
+          disabled={isWorking}
+          onClick={onContinueLocally}
+        >
+          {isRemoteApiConfigured ? 'Continuar solo en este dispositivo' : 'Continuar en este dispositivo'}
         </button>
       </section>
     </main>

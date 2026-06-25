@@ -815,7 +815,11 @@ function App() {
   function handleBackFromSetup(): void {
     handleCancelBackupImport();
     setIsCreatingVault(false);
-    if (profiles.length === 0) setHasPassedRemoteOnboarding(false);
+    if (profiles.length > 0) {
+      setSelectedVaultId(null);
+      return;
+    }
+    setHasPassedRemoteOnboarding(false);
   }
 
   if (isCheckingStorage) return <div className="boot-screen">Abriendo Llavero Seguro...</div>;
@@ -836,6 +840,7 @@ function App() {
         {busyMessage && <div className="busy-banner">{busyMessage}</div>}
         {updateBanner}
         <RemoteOnboardingPage
+          isRemoteApiConfigured={isRemoteApiConfigured}
           remoteUser={remoteUser}
           remoteVaults={remoteVaults}
           pendingImportPreview={pendingBackupImport?.preview ?? null}
@@ -859,12 +864,13 @@ function App() {
     );
   }
 
-  if (isRemoteApiConfigured && profiles.length === 0 && !hasPassedRemoteOnboarding && !isCreatingVault) {
+  if (profiles.length === 0 && !hasPassedRemoteOnboarding && !isCreatingVault) {
     return (
       <>
         {busyMessage && <div className="busy-banner">{busyMessage}</div>}
         {updateBanner}
         <RemoteOnboardingPage
+          isRemoteApiConfigured={isRemoteApiConfigured}
           remoteUser={remoteUser}
           remoteVaults={remoteVaults}
           pendingImportPreview={pendingBackupImport?.preview ?? null}
