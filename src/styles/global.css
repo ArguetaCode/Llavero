@@ -1261,6 +1261,22 @@ h3 {
   gap: 12px;
 }
 
+.security-actions-panel > .section-heading {
+  opacity: 0.92;
+}
+
+.security-actions-panel > .section-heading h2 {
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+}
+
+.security-actions-panel > .section-heading .status-pill {
+  border-color: rgba(78, 195, 204, 0.22);
+  background: rgba(233, 255, 246, 0.56);
+  color: rgba(15, 111, 101, 0.82);
+  font-weight: var(--font-medium);
+}
+
 .security-action-list {
   display: grid;
   gap: 10px;
