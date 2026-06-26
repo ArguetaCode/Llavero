@@ -527,7 +527,6 @@ h3 {
 .ghost-button:not(:disabled):hover,
 .icon-button:not(:disabled):hover,
 .sheet-close-button:not(:disabled):hover,
-.chip:not(:disabled):hover,
 .mini-button:not(:disabled):hover,
 .security-menu-button:not(:disabled):hover,
 .password-card:not(:disabled):hover,
@@ -629,6 +628,11 @@ h3 {
   display: none;
 }
 
+.vault-page .category-row {
+  margin-top: 10px;
+  margin-bottom: 18px;
+}
+
 .vault-selectors {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -646,13 +650,17 @@ h3 {
   min-width: 0;
   min-height: 40px;
   padding: 0 13px;
-  border: 1px solid var(--button-secondary-border);
+  border: 1px solid transparent;
   border-radius: 14px;
-  background: var(--button-secondary-bg);
+  background: transparent;
   color: var(--button-secondary-text);
   font-weight: var(--font-medium);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
   overflow-wrap: anywhere;
+}
+
+.chip:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .chip.active {

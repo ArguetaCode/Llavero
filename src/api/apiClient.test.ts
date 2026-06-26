@@ -67,6 +67,13 @@ describe('ApiError', () => {
     expect(resolveApiBaseUrl('http://localhost:8080', '192.168.1.20')).toBe('http://192.168.1.20:8080');
   });
 
+  it('uses the Vite proxy path without duplicating the API prefix', async () => {
+    const { buildApiUrl, resolveApiBaseUrl } = await loadApiClient('/api');
+
+    expect(resolveApiBaseUrl('/api')).toBe('/api');
+    expect(buildApiUrl('/api', '/api/auth/login')).toBe('/api/auth/login');
+  });
+
   it('normalizes network failures without leaking request data', async () => {
     const { apiRequest } = await loadApiClient();
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));

@@ -24,6 +24,7 @@ interface ErrorResponse {
 export function resolveApiBaseUrl(configuredUrl: string, currentHostname = globalThis.location?.hostname): string {
   const trimmedUrl = configuredUrl.replace(/\/$/, '');
   if (!trimmedUrl) return '';
+  if (trimmedUrl.startsWith('/')) return trimmedUrl;
   if (!currentHostname) return trimmedUrl;
 
   try {
@@ -59,7 +60,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(buildApiUrl(API_BASE_URL, path), {
       ...requestOptions,
       headers,
       signal: controller.signal,
@@ -109,6 +110,14 @@ async function readErrorMessage(response: Response, path: string): Promise<strin
   }
 
   return fallback;
+}
+
+export function buildApiUrl(baseUrl: string, path: string): string {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  if (!baseUrl) return normalizedPath;
+  if (baseUrl === '/api' && normalizedPath.startsWith('/api/')) return normalizedPath;
+
+  return `${baseUrl}${normalizedPath}`;
 }
 
 function statusMessage(status: number, path: string): string {

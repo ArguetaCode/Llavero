@@ -5,9 +5,6 @@ import { EmptyState } from '../components/EmptyState';
 import type { PasswordCategory, PasswordEntry } from '../domain/types';
 
 const categories: Array<'Todos' | PasswordCategory> = ['Todos', 'Personal', 'Trabajo', 'Estudio', 'Banco', 'Redes'];
-type QuickFilter = 'Todos' | 'Débiles' | 'Repetidas';
-
-const quickFilters: QuickFilter[] = ['Todos', 'Débiles', 'Repetidas'];
 
 interface VaultPageProps {
   entries: PasswordEntry[];
@@ -19,27 +16,22 @@ interface VaultPageProps {
 export function VaultPage({ entries, repeatedCountsByEntryId, onAdd, onOpenEntry }: VaultPageProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'Todos' | PasswordCategory>('Todos');
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>('Todos');
 
   const filteredEntries = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return entries
       .filter((entry) => {
         const matchesCategory = category === 'Todos' || entry.category === category;
-        const matchesQuickFilter =
-          quickFilter === 'Todos' ||
-          (quickFilter === 'Débiles' && entry.strength === 'weak') ||
-          (quickFilter === 'Repetidas' && (repeatedCountsByEntryId[entry.id] ?? 0) > 1);
         const matchesQuery =
           !normalizedQuery ||
           [entry.title, entry.website, entry.username, entry.category].some((value) =>
             value.toLowerCase().includes(normalizedQuery),
           );
 
-        return matchesCategory && matchesQuickFilter && matchesQuery;
+        return matchesCategory && matchesQuery;
       })
       .sort((first, second) => new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime());
-  }, [category, entries, query, quickFilter, repeatedCountsByEntryId]);
+  }, [category, entries, query]);
 
   return (
     <section className="page vault-page">
@@ -65,18 +57,6 @@ export function VaultPage({ entries, repeatedCountsByEntryId, onAdd, onOpenEntry
             type="button"
             className={category === item ? 'chip active' : 'chip'}
             onClick={() => setCategory(item)}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-      <div className="category-row" aria-label="Filtros rápidos">
-        {quickFilters.map((item) => (
-          <button
-            key={item}
-            type="button"
-            className={quickFilter === item ? 'chip active' : 'chip'}
-            onClick={() => setQuickFilter(item)}
           >
             {item}
           </button>
