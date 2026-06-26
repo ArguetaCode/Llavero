@@ -427,27 +427,43 @@ export function SecurityPage({
           <span className="status-pill">{isRemoteAuthenticated ? 'Remoto activo' : 'Local'}</span>
         </div>
         <div className="security-action-list">
-          <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('master-password')}>
+          <button
+            className={activeSecurityModal === 'master-password' ? 'security-menu-button is-active' : 'security-menu-button'}
+            type="button"
+            onClick={() => setActiveSecurityModal('master-password')}
+          >
             <span>Cambiar contraseña maestra</span>
             <small>Re-cifra la bóveda local</small>
           </button>
           {isRemoteSyncAvailable && (
-            <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('sync')}>
+            <button
+              className={activeSecurityModal === 'sync' ? 'security-menu-button is-active' : 'security-menu-button'}
+              type="button"
+              onClick={() => setActiveSecurityModal('sync')}
+            >
               <span>Sincronización cifrada</span>
               <small>{activeProfileRemoteDisplayName ?? activeProfileRemoteVaultId ?? 'Sin vínculo remoto'}</small>
             </button>
           )}
-          <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('backup')}>
+          <button
+            className={activeSecurityModal === 'backup' ? 'security-menu-button is-active' : 'security-menu-button'}
+            type="button"
+            onClick={() => setActiveSecurityModal('backup')}
+          >
             <span>Respaldo</span>
             <small>Exportar o importar archivo cifrado</small>
           </button>
-          <button className="security-menu-button" type="button" onClick={() => setActiveSecurityModal('local-data')}>
+          <button
+            className={activeSecurityModal === 'local-data' ? 'security-menu-button is-active' : 'security-menu-button'}
+            type="button"
+            onClick={() => setActiveSecurityModal('local-data')}
+          >
             <span>Datos locales</span>
             <small>Eliminar la bóveda de este navegador</small>
           </button>
         </div>
         {isRemoteSyncAvailable && (
-          <section className="remote-session-card">
+          <section className={isRemoteAuthenticated ? 'remote-session-card is-active' : 'remote-session-card'}>
             <div className="section-heading">
               <h2>Sesión remota</h2>
               <span className="status-pill">{isRemoteAuthenticated ? 'Conectado' : 'No conectado'}</span>
