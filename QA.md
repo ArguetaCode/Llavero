@@ -4,6 +4,7 @@
 
 - Abrir la app en HTTPS o `localhost`.
 - Confirmar que se muestra la pantalla inicial con explicación de contraseña maestra.
+- En build de producción, abrir la app una vez con internet, desconectar internet y recargar; confirmar que no aparece la pantalla del navegador “No tienes conexión a internet”.
 - Crear una bóveda local con nombre de perfil.
 - Intentar crear bóveda con menos de 10 caracteres y validar error.
 - Intentar crear bóveda con confirmación distinta y validar error.
