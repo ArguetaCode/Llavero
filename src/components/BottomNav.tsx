@@ -1,20 +1,15 @@
 import type { AppView } from '../domain/types';
+import { navItems } from '../domain/navItems';
 
 interface BottomNavProps {
   currentView: AppView;
   onNavigate: (view: AppView) => void;
 }
 
-const items: Array<{ view: AppView; label: string; icon: string }> = [
-  { view: 'vault', label: 'Inicio', icon: '⌂' },
-  { view: 'add', label: 'Nueva', icon: '+' },
-  { view: 'security', label: 'Seguridad', icon: '✓' },
-];
-
 export function BottomNav({ currentView, onNavigate }: BottomNavProps) {
   return (
     <nav className="bottom-nav" aria-label="Navegación principal">
-      {items.map((item) => (
+      {navItems.map((item) => (
         <button
           className={currentView === item.view ? 'nav-item active' : 'nav-item'}
           key={item.view}

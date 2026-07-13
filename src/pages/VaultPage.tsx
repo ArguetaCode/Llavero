@@ -40,7 +40,12 @@ export function VaultPage({ entries, repeatedCountsByEntryId, onAdd, onOpenEntry
           <p className="eyebrow">Bóveda local</p>
           <h1>Mi llavero</h1>
         </div>
-        <BrandLogo className="header-brand-mark" />
+        <div className="vault-header-actions">
+          <button className="primary-button header-add-button" type="button" onClick={onAdd}>
+            + Nueva contraseña
+          </button>
+          <BrandLogo className="header-brand-mark" />
+        </div>
       </header>
       <input
         className="search-input"
