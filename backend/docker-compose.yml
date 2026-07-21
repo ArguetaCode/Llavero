@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: llavero-seguro-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: llavero_seguro
       POSTGRES_USER: llavero_dev
@@ -20,6 +21,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: llavero-seguro-backend
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
