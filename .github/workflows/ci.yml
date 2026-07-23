@@ -1,11 +1,35 @@
-name: CI
+name: CI y despliegue de Sodi Key
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-sodi-key-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  reject-secrets:
+    name: Rechazar secretos commiteados
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Buscar archivos sensibles versionados
+        shell: bash
+        run: |
+          set -euo pipefail
+          blocked="$(git ls-files | grep -Ei '(^|/)(\.env|id_rsa|id_ed25519|.*\.pem|.*\.key)$' || true)"
+          test -z "$blocked" || { echo "Archivos sensibles versionados:"; echo "$blocked"; exit 1; }
+
   frontend:
+    name: Validar frontend
+    needs: reject-secrets
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -18,6 +42,8 @@ jobs:
       - run: npm run build
 
   backend:
+    name: Validar backend
+    needs: reject-secrets
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -25,50 +51,51 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - name: Backend tests
+      - name: Tests de backend
         working-directory: backend
-        run: ./mvnw test
+        run: ./mvnw --batch-mode test
 
-  deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [frontend, backend]
+  validate-compose:
+    name: Validar compose de producción
+    needs: reject-secrets
     runs-on: ubuntu-latest
-    environment: production
-    concurrency:
-      group: sodi-key-production
-      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
+      - name: docker compose config
+        run: docker compose -f compose.production.yml config --quiet
 
-      - name: Configure deployment SSH key
-        env:
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+  deploy:
+    name: Desplegar en el VPS
+    needs: [frontend, backend, validate-compose]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Preparar SSH
+        shell: bash
         run: |
+          set -euo pipefail
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.SODI_KEY_VPS_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.SODI_KEY_VPS_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Upload verified source
+      - name: Ejecutar script de despliegue
+        shell: bash
         run: |
-          rsync -az --delete \
-            --exclude='.git/' \
-            --exclude='.env' \
-            --exclude='node_modules/' \
-            --exclude='dist/' \
-            --exclude='backend/target/' \
-            -e "ssh -i ~/.ssh/deploy_key" \
-            ./ deploy@68.178.201.223:/opt/sodi-platform/apps/sodi-key/
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "${{ secrets.SODI_KEY_VPS_USER }}@${{ secrets.SODI_KEY_VPS_HOST }}" \
+            "/opt/sodi-platform/infra/scripts/deploy-sodi-key.sh"
 
-      - name: Deploy isolated containers
+      - name: Verificar salud desde la red de Caddy
+        shell: bash
         run: |
-          ssh -i ~/.ssh/deploy_key deploy@68.178.201.223 \
-            'cd /opt/sodi-platform/apps/sodi-key && docker compose -f compose.production.yml up -d --build --remove-orphans && docker compose -f compose.production.yml ps'
-
-      - name: Verify production health
-        run: |
-          curl --fail --silent --show-error \
-            --retry 12 --retry-all-errors --retry-delay 5 \
-            https://sodi-key.sodiconsultores.com/api/health
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "${{ secrets.SODI_KEY_VPS_USER }}@${{ secrets.SODI_KEY_VPS_HOST }}" \
+            "docker exec sodi_caddy wget -qO- http://sodi_key_web/health"

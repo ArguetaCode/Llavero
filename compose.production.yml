@@ -5,65 +5,16 @@ services:
       dockerfile: Dockerfile
     container_name: sodi_key_web
     restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - proxy
-      - app
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: sodi_key_backend
-    restart: unless-stopped
-    environment:
-      SPRING_PROFILES_ACTIVE: dev
-      DB_URL: jdbc:postgresql://postgres:5432/llavero_seguro
-      DB_USERNAME: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-10080}
-      CORS_ALLOWED_ORIGINS: https://sodi-key.sodiconsultores.com
-    depends_on:
-      postgres:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
       interval: 15s
       timeout: 5s
       retries: 10
-      start_period: 30s
+      start_period: 10s
     networks:
-      - app
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: sodi_key_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: llavero_seguro
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d llavero_seguro"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    networks:
-      - app
+      - proxy
 
 networks:
   proxy:
     name: sodi_proxy
     external: true
-  app:
-    name: sodi_key_internal
-    internal: true
-
-volumes:
-  postgres_data:
-    name: sodi_key_postgres_data
