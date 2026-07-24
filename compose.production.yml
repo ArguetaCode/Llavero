@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: sodi-key-web:${IMAGE_TAG:-latest}
     container_name: sodi_key_web
     restart: unless-stopped
     healthcheck:

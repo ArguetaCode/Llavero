@@ -39,7 +39,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test -- --run
-      - run: npm run build
+      - run: npm run build:local
 
   backend:
     name: Validar backend
@@ -64,9 +64,18 @@ jobs:
       - name: docker compose config
         run: docker compose -f compose.production.yml config --quiet
 
+  build-image:
+    name: Construir imagen Docker de producción
+    needs: [frontend, validate-compose]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: docker build (validación previa a producción)
+        run: docker build -t "sodi-key-web:ci-${{ github.sha }}" .
+
   deploy:
     name: Desplegar en el VPS
-    needs: [frontend, backend, validate-compose]
+    needs: [frontend, backend, validate-compose, build-image]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment: production
@@ -78,7 +87,8 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "${{ secrets.SODI_KEY_VPS_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "${{ secrets.SODI_KEY_VPS_HOST }}" >> ~/.ssh/known_hosts
+          printf '%s\n' "${{ secrets.SODI_KEY_VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Ejecutar script de despliegue
         shell: bash
@@ -87,8 +97,9 @@ jobs:
           ssh -i ~/.ssh/deploy_key \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
             "${{ secrets.SODI_KEY_VPS_USER }}@${{ secrets.SODI_KEY_VPS_HOST }}" \
-            "/opt/sodi-platform/infra/scripts/deploy-sodi-key.sh"
+            "/opt/sodi-platform/infra/scripts/deploy-sodi-key.sh ${{ github.sha }}"
 
       - name: Verificar salud desde la red de Caddy
         shell: bash
@@ -97,5 +108,17 @@ jobs:
           ssh -i ~/.ssh/deploy_key \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
             "${{ secrets.SODI_KEY_VPS_USER }}@${{ secrets.SODI_KEY_VPS_HOST }}" \
             "docker exec sodi_caddy wget -qO- http://sodi_key_web/health"
+
+      - name: Verificar dominio público por HTTPS
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://sodi-key.sodiconsultores.com/health)"
+          if [ "$status" != "200" ]; then
+            echo "El dominio público respondió $status en lugar de 200"
+            exit 1
+          fi
+          echo "Dominio público OK ($status)"
