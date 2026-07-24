@@ -2198,6 +2198,13 @@ h3 {
     margin: 0;
   }
 
+  .install-banner {
+    left: 50%;
+    right: auto;
+    width: min(calc(100% - 48px), 680px);
+    transform: translateX(-50%);
+  }
+
   .vault-page {
     min-height: auto;
     padding-bottom: 48px;
