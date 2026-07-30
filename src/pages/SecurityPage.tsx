@@ -30,7 +30,7 @@ interface SecurityPageProps {
   onCancelBackupImport: () => void;
   onConfirmBackupImport: (mode: 'replace-current' | 'new') => Promise<void>;
   onDeleteLocalVault: (masterPassword: string) => Promise<void>;
-  onExportBackup: () => Promise<void>;
+  onExportBackup: (format: 'json' | 'xls') => Promise<void>;
   onListRemoteVaults: () => Promise<RemoteVault[]>;
   onLogoutRemote: () => void;
   onOpenRemoteLogin: () => void;
@@ -94,6 +94,7 @@ export function SecurityPage({
   const [activeSecurityModal, setActiveSecurityModal] = useState<
     'master-password' | 'sync' | 'backup' | 'local-data' | null
   >(null);
+  const [exportFormat, setExportFormat] = useState<'json' | 'xls'>('json');
 
   const stats = useMemo(() => {
     const passwordCounts = new Map<string, number>();
@@ -133,8 +134,8 @@ export function SecurityPage({
     setIsWorking(true);
 
     try {
-      await onExportBackup();
-      setBackupMessage({ type: 'success', message: 'Respaldo cifrado descargado.' });
+      await onExportBackup(exportFormat);
+      setBackupMessage({ type: 'success', message: `Respaldo ${exportFormat.toUpperCase()} descargado.` });
     } catch (error) {
       setBackupMessage({
         type: 'error',
@@ -629,6 +630,13 @@ export function SecurityPage({
                     <h3>Exportar</h3>
                     <p>Descarga una copia cifrada de esta bóveda para guardarla fuera del navegador.</p>
                   </div>
+                  <label className="field" htmlFor="exportFormat">
+                    <span>Formato de exportación</span>
+                    <select id="exportFormat" value={exportFormat} onChange={(event) => setExportFormat(event.target.value as 'json' | 'xls')}>
+                      <option value="json">JSON (.json)</option>
+                      <option value="xls">Excel (.xls)</option>
+                    </select>
+                  </label>
                   <button className="primary-button" type="button" disabled={isWorking} onClick={handleExportBackup}>
                     Exportar respaldo
                   </button>

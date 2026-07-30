@@ -10,6 +10,7 @@ import { VaultSelectorPage } from './pages/VaultSelectorPage';
 import { RemoteOnboardingPage } from './pages/RemoteOnboardingPage';
 import { Toast, type ToastMessage } from './components/Toast';
 import { createBackupFileName, createVaultBackup, parseVaultBackupJson } from './backup/vaultBackup';
+import { createExcelFileName, createExcelWorkbook, createVaultCredentialRows } from './backup/vaultExcel';
 import { CURRENT_CRYPTO_METADATA } from './crypto/cryptoMetadata';
 import { decryptVault, deriveKey, encryptVault, generateSalt } from './crypto/cryptoService';
 import {
@@ -36,7 +37,7 @@ import {
   type RemoteUser,
 } from './api/authApi';
 import { ApiError, isRemoteApiConfigured } from './api/apiClient';
-import { createRemoteVault, listRemoteVaults, updateRemoteVault, type RemoteVault } from './api/vaultSyncApi';
+import { createRemoteVault, exportRemoteVaultExcel, listRemoteVaults, updateRemoteVault, type RemoteVault } from './api/vaultSyncApi';
 import { createRemoteVaultUploadPayload, findExistingRemoteVault, parseRemoteEncryptedPayload } from './sync/vaultSyncPayload';
 import type { AppView, BackupImportPreview, LocalVaultProfile, PasswordEntry, VaultData } from './domain/types';
 
@@ -698,15 +699,29 @@ function App() {
     setIsCreatingVault(false);
   }
 
-  async function handleExportBackup(): Promise<void> {
+  async function handleExportBackup(format: 'json' | 'xls'): Promise<void> {
     if (!activeProfile) throw new Error('No existe una bóveda local para exportar.');
     const backup = createVaultBackup(activeProfile);
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const credentialRows = createVaultCredentialRows(activeProfile.displayName, vault ?? { entries: [], updatedAt: backup.updatedAt });
+    const fileName = format === 'json' ? createBackupFileName() : createExcelFileName();
+    let blob: Blob;
+    if (format === 'xls' && accessToken && isRemoteApiConfigured) {
+      try {
+        blob = await exportRemoteVaultExcel(accessToken, credentialRows, fileName);
+      } catch {
+        // La exportación local mantiene disponible la descarga si el backend aún no fue actualizado.
+        blob = createExcelWorkbook(credentialRows);
+      }
+    } else {
+      blob = format === 'json'
+        ? new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+        : createExcelWorkbook(credentialRows);
+    }
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
 
     link.href = url;
-    link.download = createBackupFileName();
+    link.download = fileName;
     link.rel = 'noopener';
     document.body.appendChild(link);
     link.click();
@@ -1009,6 +1024,11 @@ function App() {
         <UnlockPage
           profile={profile}
           onBack={() => setSelectedVaultId(null)}
+          onCreateNewVault={() => {
+            clearUnlockedState();
+            setSelectedVaultId(null);
+            setIsCreatingVault(true);
+          }}
           onUseAnotherAccount={isRemoteApiConfigured ? handleUseAnotherRemoteAccount : undefined}
           onUnlock={handleUnlock}
         />

@@ -1,4 +1,5 @@
-import { apiRequest } from './apiClient';
+import { API_BASE_URL, apiRequest, buildApiUrl } from './apiClient';
+import type { ExcelExportRow } from '../backup/vaultExcel';
 
 export interface RemoteVault {
   id: string;
@@ -36,4 +37,14 @@ export function updateRemoteVault(token: string, id: string, input: RemoteVaultR
     token,
     body: JSON.stringify(input),
   });
+}
+
+export async function exportRemoteVaultExcel(token: string, rows: ExcelExportRow[], fileName: string): Promise<Blob> {
+  const response = await fetch(buildApiUrl(API_BASE_URL, '/api/vaults/export/excel'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ fileName, rows }),
+  });
+  if (!response.ok) throw new Error('El servidor no pudo generar el archivo Excel.');
+  return response.blob();
 }
