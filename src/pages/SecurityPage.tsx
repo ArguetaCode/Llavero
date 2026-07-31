@@ -31,6 +31,7 @@ interface SecurityPageProps {
   onConfirmBackupImport: (mode: 'replace-current' | 'new') => Promise<void>;
   onDeleteLocalVault: (masterPassword: string) => Promise<void>;
   onExportBackup: (format: 'json' | 'xls') => Promise<void>;
+  onUpdateJsonBackup: () => Promise<void>;
   onListRemoteVaults: () => Promise<RemoteVault[]>;
   onLogoutRemote: () => void;
   onOpenRemoteLogin: () => void;
@@ -66,6 +67,7 @@ export function SecurityPage({
   onConfirmBackupImport,
   onDeleteLocalVault,
   onExportBackup,
+  onUpdateJsonBackup,
   onListRemoteVaults,
   onLogoutRemote,
   onOpenRemoteLogin,
@@ -129,17 +131,33 @@ export function SecurityPage({
     return () => window.clearTimeout(timeoutId);
   }, [backupMessage, masterPasswordMessage, remoteMessage]);
 
-  async function handleExportBackup(): Promise<void> {
+  async function handleExportBackup(format = exportFormat): Promise<void> {
     setBackupMessage(null);
     setIsWorking(true);
 
     try {
-      await onExportBackup(exportFormat);
-      setBackupMessage({ type: 'success', message: `Respaldo ${exportFormat.toUpperCase()} descargado.` });
+      await onExportBackup(format);
+      setBackupMessage({ type: 'success', message: `Respaldo ${format.toUpperCase()} descargado.` });
     } catch (error) {
       setBackupMessage({
         type: 'error',
         message: error instanceof Error ? error.message : 'No se pudo exportar el respaldo.',
+      });
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
+  async function handleUpdateJsonBackup(): Promise<void> {
+    setBackupMessage(null);
+    setIsWorking(true);
+    try {
+      await onUpdateJsonBackup();
+      setBackupMessage({ type: 'success', message: 'Archivo JSON actualizado correctamente.' });
+    } catch (error) {
+      setBackupMessage({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'No se pudo actualizar el archivo JSON.',
       });
     } finally {
       setIsWorking(false);
@@ -637,8 +655,11 @@ export function SecurityPage({
                       <option value="xls">Excel (.xls)</option>
                     </select>
                   </label>
-                  <button className="primary-button" type="button" disabled={isWorking} onClick={handleExportBackup}>
+                  <button className="primary-button" type="button" disabled={isWorking} onClick={() => handleExportBackup()}>
                     Exportar respaldo
+                  </button>
+                  <button className="secondary-button full" type="button" disabled={isWorking} onClick={handleUpdateJsonBackup}>
+                    Actualizar JSON
                   </button>
                 </section>
 

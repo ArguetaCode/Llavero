@@ -27,6 +27,7 @@ import {
   saveVaultProfileReplacingDuplicates,
   touchVaultProfile,
 } from './storage/vaultStorage';
+import { getStoredJsonFileHandle, saveJsonFileHandle, type JsonFileHandle } from './storage/jsonFileHandle';
 import { auditVault } from './domain/vaultAudit';
 import {
   fetchRemoteMe,
@@ -45,6 +46,10 @@ const DEFAULT_AUTO_LOCK_MINUTES = 2;
 const REMOTE_TOKEN_STORAGE_KEY = 'llavero.remoteAccessToken';
 const REMOTE_SYNC_INTERVAL_MS = 15_000;
 const INSTALL_PROMPT_DISMISSED_KEY = 'llavero.installPromptDismissed';
+
+interface FilePickerWindow extends Window {
+  showOpenFilePicker?: (options?: { types?: Array<{ accept: Record<string, string[]> }>; multiple?: boolean }) => Promise<JsonFileHandle[]>;
+}
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -729,6 +734,34 @@ function App() {
     URL.revokeObjectURL(url);
   }
 
+  async function handleUpdateJsonBackup(): Promise<void> {
+    if (!activeProfile) throw new Error('No existe una bóveda local para actualizar.');
+    const picker = (window as FilePickerWindow).showOpenFilePicker;
+    if (!picker) {
+      throw new Error('Este navegador no permite sobrescribir archivos directamente. Usa Exportar respaldo en formato JSON.');
+    }
+
+    let fileHandle = await getStoredJsonFileHandle();
+    let permission = await fileHandle?.queryPermission?.({ mode: 'readwrite' });
+    if (fileHandle && permission !== 'granted') permission = await fileHandle.requestPermission?.({ mode: 'readwrite' });
+    if (!fileHandle || permission !== 'granted') {
+      [fileHandle] = await picker({
+        multiple: false,
+        types: [{ accept: { 'application/json': ['.json'] } }],
+      });
+      if (fileHandle) await saveJsonFileHandle(fileHandle);
+    }
+    if (!fileHandle) throw new Error('No se seleccionó ningún archivo JSON.');
+
+    const backup = createVaultBackup(activeProfile);
+    const writable = await fileHandle.createWritable();
+    try {
+      await writable.write(JSON.stringify(backup, null, 2));
+    } finally {
+      await writable.close();
+    }
+  }
+
   async function validateBackupImport(file: File, masterPassword: string): Promise<BackupImportPreview> {
     const fileContents = await file.text();
     const { backup, errors } = parseVaultBackupJson(fileContents);
@@ -1102,6 +1135,7 @@ function App() {
             activeProfile ? handleDeleteLocalVault(activeProfile.vaultId, confirmation) : Promise.resolve()
           }
           onExportBackup={handleExportBackup}
+          onUpdateJsonBackup={handleUpdateJsonBackup}
           onListRemoteVaults={handleListRemoteVaults}
           onLogoutRemote={handleLogoutRemote}
           onOpenRemoteLogin={handleUseAnotherRemoteAccount}
