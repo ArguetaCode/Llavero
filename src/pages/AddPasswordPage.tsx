@@ -92,7 +92,7 @@ export function AddPasswordPage({ onBack, onSave }: AddPasswordPageProps) {
         <form className="form-stack credential-form" autoComplete="off" onSubmit={handleSubmit}>
         <label className="field" htmlFor="title">
           <span>Título</span>
-          <input id="title" value={values.title} placeholder="Correo personal" autoComplete="off" onChange={(event) => updateValue('title', event.target.value)} />
+          <input id="title" value={values.title} placeholder="Credenciales del Trabajo" autoComplete="off" onChange={(event) => updateValue('title', event.target.value)} />
         </label>
         {errors.title && <p className="field-error">{errors.title}</p>}
         <label className="field" htmlFor="website">

@@ -1,0 +1,101 @@
+TÍTULO
+Revisión final de diseño responsive y aprovechamiento del espacio en SODI-Key
+
+CONTEXTO
+SODI-Key es una bóveda de contraseñas que funciona completamente de forma local.
+La interfaz ya cuenta con una navegación responsive y una primera optimización para
+computadora, pero necesita una revisión visual final para asegurar consistencia,
+centrado, legibilidad y un uso eficiente del espacio disponible.
+
+OBJETIVO
+Revisar y terminar el diseño de todas las pantallas para que:
+
+1. El contenido principal y las notificaciones estén correctamente centrados.
+2. En computadora se utilice mejor el ancho y alto disponibles.
+3. Textos, botones, campos, tarjetas, íconos y estados seleccionados sean claramente visibles.
+4. La interfaz conserve una distribución compacta y práctica en teléfono y tablet.
+5. No existan elementos cortados, superpuestos o con desplazamiento horizontal accidental.
+
+ALCANCE DE PANTALLAS
+
+- Creación de la primera bóveda local.
+- Selector de bóvedas locales.
+- Desbloqueo de bóveda.
+- Inicio / listado de credenciales.
+- Estado vacío y búsquedas sin resultados.
+- Alta de una credencial.
+- Detalle de una credencial.
+- Edición de una credencial.
+- Confirmación de eliminación de una credencial.
+- Ajustes y resumen de seguridad.
+- Cambio de contraseña maestra.
+- Exportación e importación de respaldos.
+- Eliminación de la bóveda local.
+- Notificaciones de éxito, error y estados de trabajo.
+
+REQUERIMIENTOS DE DISEÑO
+
+- Mantener el sistema visual actual de SODI-Key; no introducir otro framework visual.
+- Mantener Inicio, Nueva y Ajustes como navegación principal.
+- Conservar íconos claros y consistentes, con contraste suficiente en estados activos e inactivos.
+- Centrar modales y formularios en computadora, con ancho suficiente para una lectura cómoda.
+- Distribuir las credenciales en dos columnas en computadora mediana y tres en pantallas amplias.
+- Organizar Ajustes como tablero, evitando paneles innecesariamente estrechos o grandes espacios vacíos.
+- Mantener una jerarquía visual clara entre título, descripción, datos y acciones.
+- Usar tamaños táctiles mínimos de 44 x 44 px para controles interactivos.
+- Mantener visible la acción principal sin ocultar contenido importante.
+- Centrar las notificaciones respecto de la ventana y evitar que tapen controles importantes.
+- Respetar áreas seguras y navegación inferior en dispositivos móviles.
+- Evitar textos demasiado pequeños; el contenido normal debe ser legible sin zoom.
+
+BREAKPOINTS MÍNIMOS PARA VALIDAR
+
+- 360 x 800 px: teléfono pequeño.
+- 390 x 844 px: teléfono estándar.
+- 768 x 1024 px: tablet vertical.
+- 1024 x 768 px: computadora o tablet horizontal.
+- 1366 x 768 px: computadora portátil.
+- 1440 x 900 px: computadora estándar.
+- 1920 x 1080 px: monitor amplio.
+
+CRITERIOS DE ACEPTACIÓN
+
+1. Ninguna pantalla presenta desplazamiento horizontal accidental.
+2. Ningún texto, botón, campo, menú, tarjeta, modal o notificación queda cortado.
+3. Los elementos seleccionados tienen texto e íconos con contraste claramente legible.
+4. El contenido principal está visualmente centrado y equilibrado.
+5. En 1366 px o más, la aplicación aprovecha la mayor parte del ancho disponible sin
+   producir líneas de texto excesivamente largas.
+6. Los formularios y detalles se muestran centrados en computadora y como una composición
+   cómoda en dispositivos pequeños.
+7. Las tarjetas de credenciales utilizan dos o tres columnas cuando el ancho lo permite.
+8. Ajustes distribuye sus paneles de forma equilibrada y mantiene alineación entre columnas.
+9. Las notificaciones aparecen centradas y permanecen completamente visibles.
+10. La navegación mantiene el mismo significado y orden en todos los tamaños.
+11. El zoom del navegador al 100 % permite leer y operar toda la interfaz cómodamente.
+12. La revisión no altera cifrado, IndexedDB, respaldos ni comportamiento funcional.
+
+VALIDACIÓN FUNCIONAL MÍNIMA
+
+- Crear y desbloquear una bóveda de prueba.
+- Crear, abrir, editar y eliminar una credencial ficticia.
+- Probar búsqueda y filtros por categoría.
+- Abrir Ajustes y recorrer todos sus paneles.
+- Abrir los diálogos de importación y eliminación.
+- Provocar al menos una notificación de éxito y una de error.
+- Repetir la inspección visual en todos los breakpoints indicados.
+
+ENTREGABLES
+
+- Ajustes de JSX/CSS necesarios para completar la revisión.
+- Capturas de escritorio y móvil de las pantallas principales.
+- Lista breve de pantallas y resoluciones validadas.
+- Confirmación de compilación y pruebas automatizadas.
+- Nota de cualquier limitación visual que permanezca pendiente.
+
+FUERA DE ALCANCE
+
+- Cambios al cifrado o a la contraseña maestra.
+- Incorporación de backend, base de datos remota o sincronización en la nube.
+- Sustitución del sistema visual completo.
+- Nuevas funcionalidades que no sean necesarias para completar la revisión visual.

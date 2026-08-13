@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { BrandLogo } from '../components/BrandLogo';
 import { PasswordCard } from '../components/PasswordCard';
 import { EmptyState } from '../components/EmptyState';
+import { NavigationIcon } from '../components/NavigationIcon';
 import type { PasswordCategory, PasswordEntry } from '../domain/types';
 
 const categories: Array<'Todos' | PasswordCategory> = ['Todos', 'Personal', 'Trabajo', 'Estudio', 'Banco', 'Redes'];
@@ -90,7 +91,7 @@ export function VaultPage({ entries, repeatedCountsByEntryId, onAdd, onOpenEntry
         )}
       </div>
       <button className="fab" type="button" aria-label="Agregar contraseña" onClick={onAdd}>
-        +
+        <NavigationIcon name="add" />
       </button>
     </section>
   );

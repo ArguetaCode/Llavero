@@ -1,6 +1,7 @@
 import type { AppView } from '../domain/types';
 import { navItems } from '../domain/navItems';
 import { BrandLogo } from './BrandLogo';
+import { NavigationIcon } from './NavigationIcon';
 
 interface SidebarProps {
   currentView: AppView;
@@ -19,7 +20,7 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
             type="button"
             onClick={() => onNavigate(item.view)}
           >
-            <span aria-hidden="true">{item.icon}</span>
+            <NavigationIcon name={item.icon} />
             {item.label}
           </button>
         ))}

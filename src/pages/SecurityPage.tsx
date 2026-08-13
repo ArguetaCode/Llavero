@@ -361,7 +361,7 @@ export function SecurityPage({
       <header className="page-header">
         <div>
           <p className="eyebrow">Estado general</p>
-          <h1>Seguridad</h1>
+          <h1>Ajustes</h1>
         </div>
       </header>
 

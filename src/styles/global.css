@@ -82,7 +82,7 @@
   --radius: 14px;
   --shadow: var(--shadow-soft);
   --sidebar-width: 264px;
-  --content-max-width: 1120px;
+  --content-max-width: 1320px;
   --content-padding-desktop: 40px;
 }
 
@@ -492,6 +492,17 @@ h3 {
   min-height: 44px;
   border: 0;
   border-radius: var(--radius);
+}
+
+.navigation-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .icon-button {
@@ -2090,7 +2101,7 @@ h3 {
   }
 
   .credential-modal {
-    width: min(100%, 640px);
+    width: min(100%, 780px);
     max-height: min(88vh, 760px);
     border-radius: 24px;
     border-bottom: 1px solid var(--border-soft);
@@ -2178,6 +2189,11 @@ h3 {
   .sidebar-nav-item span {
     font-size: 1.2rem;
     line-height: 1;
+  }
+
+  .sidebar-nav-item .navigation-icon {
+    width: 26px;
+    height: 26px;
   }
 
   .sidebar-nav-item.active {
@@ -2280,13 +2296,13 @@ h3 {
 
 @media (min-width: 1440px) {
   :root {
-    --content-max-width: 1200px;
+    --content-max-width: 1440px;
   }
 }
 
 @media (min-width: 1920px) {
   :root {
-    --content-max-width: 1280px;
+    --content-max-width: 1520px;
   }
 }
 
