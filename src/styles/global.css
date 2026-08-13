@@ -303,12 +303,16 @@ h3 {
 }
 
 .app-content {
+  width: 100%;
+  min-width: 0;
   min-height: 100dvh;
   overflow-x: hidden;
 }
 
 .page {
   position: relative;
+  width: 100%;
+  margin-inline: auto;
   padding: calc(20px + env(safe-area-inset-top)) 18px 116px;
   overflow-x: hidden;
 }
@@ -447,15 +451,6 @@ h3 {
   min-width: 58px;
 }
 
-.password-actions {
-  display: grid;
-  grid-template-columns: auto 1fr;
-}
-
-.password-actions .secondary-button {
-  width: 100%;
-}
-
 .field {
   display: grid;
   gap: 7px;
@@ -479,6 +474,42 @@ h3 {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
+}
+
+.secure-field-input-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.secure-field-input-wrap input {
+  height: 100%;
+}
+
+.secure-field-input-wrap.has-leading input {
+  padding-left: 112px;
+}
+
+.secure-field-leading {
+  position: absolute;
+  z-index: 1;
+  top: 1px;
+  bottom: 1px;
+  left: 1px;
+  width: 94px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--border-soft);
+  border-radius: 11px 0 0 11px;
+  background: rgba(245, 249, 250, 0.96);
+  pointer-events: none;
+}
+
+.secure-field-leading .strength-badge {
+  min-height: 24px;
+  padding-inline: 9px;
+  font-size: 0.74rem;
+  box-shadow: none;
 }
 
 .icon-button,
@@ -643,8 +674,8 @@ h3 {
 }
 
 .vault-page .category-row {
-  margin-top: 10px;
-  margin-bottom: 18px;
+  margin-top: 18px;
+  margin-bottom: 22px;
 }
 
 .vault-selectors {
@@ -698,6 +729,12 @@ h3 {
 
 .vault-page .password-list {
   padding-bottom: 0;
+}
+
+.vault-page .password-list > .empty-state {
+  grid-column: 1 / -1;
+  width: min(100%, 720px);
+  justify-self: center;
 }
 
 .security-page {
@@ -788,6 +825,22 @@ h3 {
   overscroll-behavior: contain;
 }
 
+.add-credential-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.credential-field-group {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.password-field-group {
+  gap: 10px;
+}
+
 .credential-form input,
 .credential-form select {
   min-height: 52px;
@@ -836,15 +889,11 @@ h3 {
 }
 
 .sheet-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
   display: grid;
   grid-template-columns: 1fr 1.3fr;
   gap: 10px;
-  margin: 4px -2px -2px;
-  padding-top: 10px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0), var(--color-surface) 24%);
+  margin: 8px 0 0;
+  padding-top: 4px;
 }
 
 .sheet-actions .secondary-button,
@@ -2101,8 +2150,8 @@ h3 {
   }
 
   .credential-modal {
-    width: min(100%, 780px);
-    max-height: min(88vh, 760px);
+    width: min(100%, 820px);
+    max-height: min(90dvh, 800px);
     border-radius: 24px;
     border-bottom: 1px solid var(--border-soft);
     box-shadow: var(--shadow-modal);
@@ -2141,8 +2190,53 @@ h3 {
 
   .page {
     width: 100%;
-    max-width: var(--content-max-width);
+    max-width: min(100%, var(--content-max-width));
     padding: var(--content-padding-desktop) var(--content-padding-desktop) 48px;
+  }
+
+  .add-credential-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 18px;
+  }
+
+  .add-credential-grid .full-row {
+    grid-column: 1 / -1;
+  }
+
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+  .vault-page .search-input {
+    min-height: 56px;
+    padding-inline: 18px;
+    font-size: 1rem;
+  }
+
+  .vault-page .category-row {
+    gap: 10px;
+    margin-top: 20px;
+    margin-bottom: 26px;
+  }
+
+  .vault-page .chip {
+    min-height: 44px;
+    padding-inline: 18px;
+  }
+
+  .credential-modal {
+    width: min(calc(100vw - 64px), 920px);
+    max-height: min(90dvh, 840px);
+  }
+
+  .credential-modal-header {
+    padding: 22px 28px 14px;
+  }
+
+  .credential-form {
+    gap: 16px;
+    padding: 16px 28px 26px;
+    scrollbar-gutter: stable;
   }
 
   .bottom-nav {
@@ -2248,6 +2342,7 @@ h3 {
   .password-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
     padding-bottom: 0;
   }
 
@@ -2260,7 +2355,7 @@ h3 {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
-    gap: 24px;
+    gap: 28px;
     padding-bottom: 48px;
   }
 
@@ -2285,6 +2380,11 @@ h3 {
 @media (min-width: 1280px) {
   .password-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .auth-panel {
+    width: min(100%, 500px);
+    padding: 32px;
   }
 
   .notes-box p,

@@ -7,12 +7,11 @@ import type { LocalVaultProfile, VaultData } from '../domain/types';
 interface UnlockPageProps {
   profile: LocalVaultProfile;
   onBack: () => void;
-  onCreateNewVault: () => void;
   onUseAnotherAccount?: () => void;
   onUnlock: (vault: VaultData, key: CryptoKey) => Promise<void>;
 }
 
-export function UnlockPage({ profile, onBack, onCreateNewVault, onUseAnotherAccount, onUnlock }: UnlockPageProps) {
+export function UnlockPage({ profile, onBack, onUseAnotherAccount, onUnlock }: UnlockPageProps) {
   const [masterPassword, setMasterPassword] = useState('');
   const [error, setError] = useState('');
   const [isUnlocking, setIsUnlocking] = useState(false);
@@ -53,9 +52,6 @@ export function UnlockPage({ profile, onBack, onCreateNewVault, onUseAnotherAcco
           {error && <p className="form-error">{error}</p>}
           <button className="primary-button" type="submit" disabled={isUnlocking || !masterPassword}>
             {isUnlocking ? 'Abriendo...' : 'Abrir mi bóveda'}
-          </button>
-          <button className="link-button" type="button" onClick={onCreateNewVault}>
-            ¿Ya no tienes acceso? Crea una nueva bóveda
           </button>
           {onUseAnotherAccount && (
             <button className="ghost-button" type="button" onClick={onUseAnotherAccount}>Usar otra cuenta</button>

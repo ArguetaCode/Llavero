@@ -78,89 +78,113 @@ export function AddPasswordPage({ onBack, onSave }: AddPasswordPageProps) {
 
   return (
     <div className="credential-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="addCredentialTitle">
-      <section className="credential-modal">
+      <section className="credential-modal add-credential-modal">
         <div className="sheet-handle" aria-hidden="true" />
         <header className="credential-modal-header">
-        <div>
-          <p className="eyebrow">Nueva credencial</p>
+          <div>
+            <p className="eyebrow">Nueva credencial</p>
             <h1 id="addCredentialTitle">Guardar contraseña</h1>
-        </div>
-          <button className="sheet-close-button" type="button" aria-label="Cerrar" onClick={onBack}>
-            ×
-          </button>
-      </header>
+          </div>
+          <button className="sheet-close-button" type="button" aria-label="Cerrar" onClick={onBack}>×</button>
+        </header>
+
         <form className="form-stack credential-form" autoComplete="off" onSubmit={handleSubmit}>
-        <label className="field" htmlFor="title">
-          <span>Título</span>
-          <input id="title" value={values.title} placeholder="Credenciales del Trabajo" autoComplete="off" onChange={(event) => updateValue('title', event.target.value)} />
-        </label>
-        {errors.title && <p className="field-error">{errors.title}</p>}
-        <label className="field" htmlFor="website">
-          <span>Sitio web</span>
-          <input id="website" value={values.website} placeholder="ejemplo.com (opcional)" inputMode="url" autoComplete="off" onChange={(event) => updateValue('website', event.target.value)} />
-        </label>
-        {errors.website && <p className="field-error">{errors.website}</p>}
-        <label className="field" htmlFor="credentialUsername">
-          <span>Usuario</span>
-          <input
-            id="credentialUsername"
-            value={values.username}
-            placeholder="usuario o correo"
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            data-1p-ignore="true"
-            data-bwignore="true"
-            data-lpignore="true"
-            onChange={(event) => updateValue('username', event.target.value)}
-          />
-        </label>
-        {errors.username && <p className="field-error">{errors.username}</p>}
-        <SecureField
-          id="credentialSecret"
-          label="Contraseña"
-          value={values.password}
-          placeholder="Escribe o genera una contraseña"
-          autoComplete="new-password"
-          preventPasswordManagerFill
-          onChange={(value) => updateValue('password', value)}
-        />
-        <p className="field-hint">Recomendado: 12+ caracteres, con mayúsculas, números y símbolos.</p>
-        {errors.password && <p className="field-error">{errors.password}</p>}
-        <div className="action-row password-actions">
-          <StrengthBadge strength={strength} />
-          <button className="secondary-button" type="button" onClick={() => updateValue('password', generatePassword())}>
-            Generar segura
-          </button>
-        </div>
-        <label className="field" htmlFor="category">
-          <span>Categoría</span>
-          <select
-            id="category"
-            value={values.category}
-            onChange={(event) => updateValue('category', event.target.value as PasswordCategory)}
-          >
-            {categories.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field" htmlFor="notes">
-          <span>Notas</span>
-          <textarea id="notes" value={values.notes} onChange={(event) => updateValue('notes', event.target.value)} />
-        </label>
-        {errors.form && <p className="form-error">{errors.form}</p>}
+          <div className="add-credential-grid">
+            <div className="credential-field-group">
+              <label className="field" htmlFor="title">
+                <span>Título</span>
+                <input
+                  id="title"
+                  value={values.title}
+                  placeholder="Correo del trabajo"
+                  autoComplete="off"
+                  onChange={(event) => updateValue('title', event.target.value)}
+                />
+              </label>
+              {errors.title && <p className="field-error">{errors.title}</p>}
+            </div>
+
+            <div className="credential-field-group">
+              <label className="field" htmlFor="website">
+                <span>Sitio web</span>
+                <input
+                  id="website"
+                  value={values.website}
+                  placeholder="ejemplo.com (opcional)"
+                  inputMode="url"
+                  autoComplete="off"
+                  onChange={(event) => updateValue('website', event.target.value)}
+                />
+              </label>
+              {errors.website && <p className="field-error">{errors.website}</p>}
+            </div>
+
+            <div className="credential-field-group full-row">
+              <label className="field" htmlFor="credentialUsername">
+                <span>Usuario</span>
+                <input
+                  id="credentialUsername"
+                  value={values.username}
+                  placeholder="usuario o correo"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  data-1p-ignore="true"
+                  data-bwignore="true"
+                  data-lpignore="true"
+                  onChange={(event) => updateValue('username', event.target.value)}
+                />
+              </label>
+              {errors.username && <p className="field-error">{errors.username}</p>}
+            </div>
+
+            <div className="credential-field-group full-row password-field-group">
+              <SecureField
+                id="credentialSecret"
+                label="Contraseña"
+                value={values.password}
+                placeholder="Escribe o genera una contraseña"
+                autoComplete="new-password"
+                preventPasswordManagerFill
+                leadingContent={<StrengthBadge strength={strength} />}
+                onChange={(value) => updateValue('password', value)}
+              />
+              <p className="field-hint">Recomendado: 12+ caracteres, con mayúsculas, números y símbolos.</p>
+              {errors.password && <p className="field-error">{errors.password}</p>}
+              <button className="secondary-button full" type="button" onClick={() => updateValue('password', generatePassword())}>
+                Generar segura
+              </button>
+            </div>
+
+            <div className="credential-field-group">
+              <label className="field" htmlFor="category">
+                <span>Categoría</span>
+                <select
+                  id="category"
+                  value={values.category}
+                  onChange={(event) => updateValue('category', event.target.value as PasswordCategory)}
+                >
+                  {categories.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </label>
+            </div>
+
+            <div className="credential-field-group">
+              <label className="field" htmlFor="notes">
+                <span>Notas</span>
+                <textarea id="notes" value={values.notes} onChange={(event) => updateValue('notes', event.target.value)} />
+              </label>
+            </div>
+          </div>
+
+          {errors.form && <p className="form-error">{errors.form}</p>}
           <div className="sheet-actions">
-            <button className="secondary-button" type="button" disabled={isSaving} onClick={onBack}>
-              Cancelar
-            </button>
+            <button className="secondary-button" type="button" disabled={isSaving} onClick={onBack}>Cancelar</button>
             <button className="primary-button" type="submit" disabled={isSaving}>
               {isSaving ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
-      </form>
+        </form>
       </section>
     </div>
   );

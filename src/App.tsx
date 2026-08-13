@@ -1057,11 +1057,6 @@ function App() {
         <UnlockPage
           profile={profile}
           onBack={() => setSelectedVaultId(null)}
-          onCreateNewVault={() => {
-            clearUnlockedState();
-            setSelectedVaultId(null);
-            setIsCreatingVault(true);
-          }}
           onUseAnotherAccount={isRemoteApiConfigured ? handleUseAnotherRemoteAccount : undefined}
           onUnlock={handleUnlock}
         />

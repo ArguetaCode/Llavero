@@ -8,6 +8,7 @@ interface SecureFieldProps {
   placeholder?: string;
   autoComplete?: string;
   preventPasswordManagerFill?: boolean;
+  leadingContent?: React.ReactNode;
 }
 
 export function SecureField({
@@ -18,6 +19,7 @@ export function SecureField({
   placeholder,
   autoComplete,
   preventPasswordManagerFill = false,
+  leadingContent,
 }: SecureFieldProps) {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -25,17 +27,20 @@ export function SecureField({
     <label className="field" htmlFor={id}>
       <span>{label}</span>
       <div className="secure-field">
-        <input
-          id={id}
-          type={isVisible ? 'text' : 'password'}
-          value={value}
-          placeholder={placeholder}
-          autoComplete={autoComplete ?? 'off'}
-          data-1p-ignore={preventPasswordManagerFill ? 'true' : undefined}
-          data-bwignore={preventPasswordManagerFill ? 'true' : undefined}
-          data-lpignore={preventPasswordManagerFill ? 'true' : undefined}
-          onChange={(event) => onChange(event.target.value)}
-        />
+        <div className={leadingContent ? 'secure-field-input-wrap has-leading' : 'secure-field-input-wrap'}>
+          {leadingContent && <span className="secure-field-leading">{leadingContent}</span>}
+          <input
+            id={id}
+            type={isVisible ? 'text' : 'password'}
+            value={value}
+            placeholder={placeholder}
+            autoComplete={autoComplete ?? 'off'}
+            data-1p-ignore={preventPasswordManagerFill ? 'true' : undefined}
+            data-bwignore={preventPasswordManagerFill ? 'true' : undefined}
+            data-lpignore={preventPasswordManagerFill ? 'true' : undefined}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </div>
         <button type="button" className="icon-button" onClick={() => setIsVisible((current) => !current)}>
           {isVisible ? 'Ocultar' : 'Ver'}
         </button>
