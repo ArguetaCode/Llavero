@@ -2,28 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BackupImportPreview, PasswordEntry } from '../domain/types';
 import type { VaultAudit } from '../domain/vaultAudit';
 import { Toast, type ToastMessage } from '../components/Toast';
-import type { RemoteUser } from '../api/authApi';
-import type { RemoteVault } from '../api/vaultSyncApi';
 
 interface SecurityPageProps {
   autoLockMinutes: number;
   audit: VaultAudit | null;
   activeProfileName: string;
-  activeProfileVaultId: string;
   activeProfileUpdatedAt: string;
-  activeProfileRemoteVaultId?: string;
-  activeProfileRemoteDisplayName?: string;
-  activeProfileLastRemoteSyncAt?: string;
-  activeProfileLastRemoteUploadAt?: string;
-  activeProfileLastRemoteDownloadAt?: string;
   entries: PasswordEntry[];
-  isRemoteAuthenticated: boolean;
-  isRemoteSyncAvailable: boolean;
-  lastManualDownloadAt: string | null;
-  lastManualUploadAt: string | null;
   pendingImportPreview: BackupImportPreview | null;
-  remoteUser: RemoteUser | null;
-  remoteVaults: RemoteVault[];
   vaultUpdatedAt: string;
   onAutoLockChange: (minutes: number) => void;
   onChangeMasterPassword: (currentPassword: string, nextPassword: string) => Promise<void>;
@@ -32,12 +18,8 @@ interface SecurityPageProps {
   onDeleteLocalVault: (masterPassword: string) => Promise<void>;
   onExportBackup: (format: 'json' | 'xls') => Promise<void>;
   onUpdateJsonBackup: () => Promise<void>;
-  onListRemoteVaults: () => Promise<RemoteVault[]>;
-  onLogoutRemote: () => void;
-  onOpenRemoteLogin: () => void;
   onLock: () => void;
   onSwitchVault: () => void;
-  onValidateRemoteVaultImport: (remoteVaultId: string, masterPassword: string) => Promise<BackupImportPreview>;
   onValidateBackupImport: (file: File, masterPassword: string) => Promise<BackupImportPreview>;
 }
 
@@ -45,21 +27,9 @@ export function SecurityPage({
   autoLockMinutes,
   audit,
   activeProfileName,
-  activeProfileVaultId,
   activeProfileUpdatedAt,
-  activeProfileRemoteVaultId,
-  activeProfileRemoteDisplayName,
-  activeProfileLastRemoteSyncAt,
-  activeProfileLastRemoteUploadAt,
-  activeProfileLastRemoteDownloadAt,
   entries,
-  isRemoteAuthenticated,
-  isRemoteSyncAvailable,
-  lastManualDownloadAt,
-  lastManualUploadAt,
   pendingImportPreview,
-  remoteUser,
-  remoteVaults,
   vaultUpdatedAt,
   onAutoLockChange,
   onChangeMasterPassword,
@@ -68,12 +38,8 @@ export function SecurityPage({
   onDeleteLocalVault,
   onExportBackup,
   onUpdateJsonBackup,
-  onListRemoteVaults,
-  onLogoutRemote,
-  onOpenRemoteLogin,
   onLock,
   onSwitchVault,
-  onValidateRemoteVaultImport,
   onValidateBackupImport,
 }: SecurityPageProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -82,19 +48,15 @@ export function SecurityPage({
   const [backupMessage, setBackupMessage] = useState<ToastMessage | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [deleteMasterPassword, setDeleteMasterPassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [currentMasterPassword, setCurrentMasterPassword] = useState('');
   const [nextMasterPassword, setNextMasterPassword] = useState('');
   const [nextMasterPasswordConfirmation, setNextMasterPasswordConfirmation] = useState('');
   const [masterPasswordMessage, setMasterPasswordMessage] = useState<ToastMessage | null>(null);
-  const [remoteMessage, setRemoteMessage] = useState<ToastMessage | null>(null);
-  const [selectedRemoteVaultId, setSelectedRemoteVaultId] = useState('');
-  const [remoteMasterPassword, setRemoteMasterPassword] = useState('');
   const [replaceConfirmation, setReplaceConfirmation] = useState('');
   const [activeSecurityModal, setActiveSecurityModal] = useState<
-    'master-password' | 'sync' | 'backup' | 'local-data' | null
+    'master-password' | 'backup' | 'local-data' | null
   >(null);
   const [exportFormat, setExportFormat] = useState<'json' | 'xls'>('json');
 
@@ -122,14 +84,13 @@ export function SecurityPage({
   };
 
   useEffect(() => {
-    if (!backupMessage && !masterPasswordMessage && !remoteMessage) return undefined;
+    if (!backupMessage && !masterPasswordMessage) return undefined;
     const timeoutId = window.setTimeout(() => {
       setBackupMessage(null);
       setMasterPasswordMessage(null);
-      setRemoteMessage(null);
     }, 4000);
     return () => window.clearTimeout(timeoutId);
-  }, [backupMessage, masterPasswordMessage, remoteMessage]);
+  }, [backupMessage, masterPasswordMessage]);
 
   async function handleExportBackup(format = exportFormat): Promise<void> {
     setBackupMessage(null);
@@ -204,7 +165,6 @@ export function SecurityPage({
 
   async function handleConfirmImport(mode: 'replace-current' | 'new'): Promise<void> {
     setBackupMessage(null);
-    setRemoteMessage(null);
 
     if (mode === 'replace-current' && replaceConfirmation !== 'REEMPLAZAR') {
       setBackupMessage({ type: 'error', message: 'Escribe REEMPLAZAR para confirmar el reemplazo.' });
@@ -217,7 +177,6 @@ export function SecurityPage({
       setReplaceConfirmation('');
       setBackupPassword('');
       setSelectedFile(null);
-      setRemoteMasterPassword('');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -247,29 +206,6 @@ export function SecurityPage({
       setBackupMessage({ type: 'success', message: 'Bóveda local eliminada correctamente.' });
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : 'No se pudo eliminar la bóveda local.');
-    } finally {
-      setIsWorking(false);
-    }
-  }
-
-  function handleOpenLogoutConfirmation(): void {
-    setActiveSecurityModal(null);
-    setRemoteMessage(null);
-    setIsLogoutModalOpen(true);
-  }
-
-  function handleConfirmLogout(): void {
-    setRemoteMessage(null);
-    setIsWorking(true);
-
-    try {
-      setActiveSecurityModal(null);
-      setIsLogoutModalOpen(false);
-      setSelectedRemoteVaultId('');
-      setRemoteMasterPassword('');
-      onLogoutRemote();
-    } catch (error) {
-      setRemoteMessage({ type: 'error', message: error instanceof Error ? error.message : 'No se pudo cerrar la sesión remota.' });
     } finally {
       setIsWorking(false);
     }
@@ -311,48 +247,7 @@ export function SecurityPage({
     }
   }
 
-  async function handleListRemoteVaults(): Promise<void> {
-    setRemoteMessage(null);
-    setIsWorking(true);
-    try {
-      const vaults = await onListRemoteVaults();
-      setRemoteMessage({ type: 'success', message: vaults.length ? 'Bóvedas remotas actualizadas.' : 'No hay bóvedas remotas todavía.' });
-    } catch (error) {
-      setRemoteMessage({ type: 'error', message: error instanceof Error ? error.message : 'No se pudieron listar las bóvedas remotas.' });
-    } finally {
-      setIsWorking(false);
-    }
-  }
-
-  async function handleValidateRemoteImport(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setRemoteMessage(null);
-
-    if (!selectedRemoteVaultId || !remoteMasterPassword) {
-      setRemoteMessage({ type: 'error', message: 'Selecciona una bóveda remota e ingresa su contraseña maestra.' });
-      return;
-    }
-
-    setIsWorking(true);
-    try {
-      await onValidateRemoteVaultImport(selectedRemoteVaultId, remoteMasterPassword);
-      setRemoteMasterPassword('');
-      setRemoteMessage({ type: 'success', message: 'Bóveda remota descifrada localmente. Confirma cómo importarla.' });
-    } catch (error) {
-      setRemoteMessage({ type: 'error', message: error instanceof Error ? error.message : 'No se pudo descifrar la bóveda remota.' });
-    } finally {
-      setIsWorking(false);
-    }
-  }
-
-  function formatOptionalDate(value: string | null): string {
-    return value ? new Date(value).toLocaleString() : 'Pendiente';
-  }
-
-  const selectedRemoteVault = remoteVaults.find((remoteVault) => remoteVault.id === selectedRemoteVaultId) ?? null;
-  const pendingRemoteDisplayName = pendingImportPreview?.remoteDisplayName ?? pendingImportPreview?.displayName ?? 'Bóveda importada';
-  const hasPotentialConflict =
-    selectedRemoteVault && activeProfileUpdatedAt && selectedRemoteVault.updatedAt !== activeProfileUpdatedAt;
+  const pendingImportDisplayName = pendingImportPreview?.displayName ?? 'Bóveda importada';
   const securityIssueCount = displayedAudit.weak + displayedAudit.repeated + displayedAudit.missingWebsite;
   const securityStatusLabel = securityIssueCount > 0 ? `${securityIssueCount} por revisar` : 'Todo en orden';
 
@@ -443,7 +338,7 @@ export function SecurityPage({
       <section className="settings-panel settings-section security-actions-panel">
         <div className="section-heading">
           <h2>Herramientas</h2>
-          <span className="status-pill">{isRemoteAuthenticated ? 'Remoto activo' : 'Local'}</span>
+          <span className="status-pill">Local</span>
         </div>
         <div className="security-action-list">
           <button
@@ -454,16 +349,6 @@ export function SecurityPage({
             <span>Cambiar contraseña maestra</span>
             <small>Re-cifra la bóveda local</small>
           </button>
-          {isRemoteSyncAvailable && (
-            <button
-              className={activeSecurityModal === 'sync' ? 'security-menu-button is-active' : 'security-menu-button'}
-              type="button"
-              onClick={() => setActiveSecurityModal('sync')}
-            >
-              <span>Sincronización cifrada</span>
-              <small>{activeProfileRemoteDisplayName ?? activeProfileRemoteVaultId ?? 'Sin vínculo remoto'}</small>
-            </button>
-          )}
           <button
             className={activeSecurityModal === 'backup' ? 'security-menu-button is-active' : 'security-menu-button'}
             type="button"
@@ -481,32 +366,6 @@ export function SecurityPage({
             <small>Eliminar la bóveda de este navegador</small>
           </button>
         </div>
-        {isRemoteSyncAvailable && (
-          <section className={isRemoteAuthenticated ? 'remote-session-card is-active' : 'remote-session-card'}>
-            <div className="section-heading">
-              <h2>Sesión remota</h2>
-              <span className="status-pill">{isRemoteAuthenticated ? 'Conectado' : 'No conectado'}</span>
-            </div>
-            <div className="remote-session-details">
-              <span>Estado: {isRemoteAuthenticated ? 'Conectado' : 'No conectado'}</span>
-              {remoteUser && <span>Correo: {remoteUser.email}</span>}
-            </div>
-            <p>
-              {isRemoteAuthenticated
-                ? 'Cerrar sesión solo desconecta esta cuenta en este dispositivo. Tus bóvedas locales no se eliminarán.'
-                : 'Inicia sesión para sincronizar o recuperar bóvedas cifradas desde tu cuenta remota.'}
-            </p>
-            {isRemoteAuthenticated ? (
-              <button className="secondary-button remote-session-button" type="button" disabled={isWorking} onClick={handleOpenLogoutConfirmation}>
-                Cerrar sesión
-              </button>
-            ) : (
-              <button className="ghost-button remote-session-button" type="button" disabled={isWorking} onClick={onOpenRemoteLogin}>
-                Iniciar sesión remota
-              </button>
-            )}
-          </section>
-        )}
       </section>
 
       {activeSecurityModal && (
@@ -515,7 +374,6 @@ export function SecurityPage({
             <div className="modal-title-row">
               <h2>
                 {activeSecurityModal === 'master-password' && 'Cambiar contraseña maestra'}
-                {activeSecurityModal === 'sync' && 'Sincronización cifrada'}
                 {activeSecurityModal === 'backup' && 'Respaldo'}
                 {activeSecurityModal === 'local-data' && 'Datos locales'}
               </h2>
@@ -563,72 +421,6 @@ export function SecurityPage({
                     Cambiar contraseña maestra
                   </button>
                 </form>
-              </>
-            )}
-
-            {activeSecurityModal === 'sync' && (
-              <>
-                <div className="section-heading">
-                  <p className="muted">
-                    Tu cuenta mantiene una sola bóveda. Al iniciar sesión se compara con este dispositivo y cada cambio posterior se respalda automáticamente.
-                  </p>
-                  <span className="status-pill">{isRemoteAuthenticated ? 'Automática' : 'No conectado'}</span>
-                </div>
-                <div className="modal-summary">
-                  <span>Estado: {remoteUser ? `Conectado como ${remoteUser.email}` : 'Modo local'}</span>
-                  <span>Remota vinculada: {activeProfileRemoteDisplayName ?? activeProfileRemoteVaultId ?? 'Sin vínculo remoto'}</span>
-                  <span>Última sync local: {formatOptionalDate(activeProfileLastRemoteSyncAt ?? null)}</span>
-                  <span>Última subida local: {formatOptionalDate(activeProfileLastRemoteUploadAt ?? lastManualUploadAt)}</span>
-                  <span>Última descarga local: {formatOptionalDate(activeProfileLastRemoteDownloadAt ?? lastManualDownloadAt)}</span>
-                </div>
-                <button className="secondary-button full" type="button" disabled={isWorking || !isRemoteAuthenticated} onClick={handleListRemoteVaults}>
-                  Comprobar estado remoto
-                </button>
-                {remoteVaults.length > 0 && (
-                  <form className="form-stack import-form" autoComplete="off" onSubmit={handleValidateRemoteImport}>
-                    <label className="field" htmlFor="remoteVault">
-                      <span>Bóveda remota</span>
-                      <select id="remoteVault" value={selectedRemoteVaultId} onChange={(event) => setSelectedRemoteVaultId(event.target.value)}>
-                        <option value="">Seleccionar</option>
-                        {remoteVaults.map((remoteVault) => (
-                          <option key={remoteVault.id} value={remoteVault.id}>
-                            {remoteVault.displayName} - v{remoteVault.payloadVersion}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <div className="remote-vault-list">
-                      {remoteVaults.map((remoteVault) => {
-                        const matchesActiveVault =
-                          remoteVault.id === activeProfileRemoteVaultId || remoteVault.clientVaultId === activeProfileVaultId;
-                        return (
-                          <article className="remote-vault-item" key={remoteVault.id}>
-                            <strong>{remoteVault.displayName}</strong>
-                            <span>Actualizada: {new Date(remoteVault.updatedAt).toLocaleString()}</span>
-                            <span>Payload: v{remoteVault.payloadVersion}</span>
-                            <span>{matchesActiveVault ? 'Coincide con la bóveda local activa' : 'Perfil remoto separado'}</span>
-                          </article>
-                        );
-                      })}
-                    </div>
-                    {hasPotentialConflict && (
-                      <p className="form-error">Puede existir una versión más reciente. Revisa antes de reemplazar.</p>
-                    )}
-                    <label className="field" htmlFor="remoteMasterPassword">
-                      <span>Contraseña maestra de esa bóveda</span>
-                      <input
-                        id="remoteMasterPassword"
-                        type="password"
-                        value={remoteMasterPassword}
-                        autoComplete="off"
-                        onChange={(event) => setRemoteMasterPassword(event.target.value)}
-                      />
-                    </label>
-                    <button className="secondary-button full" type="submit" disabled={isWorking || !isRemoteAuthenticated}>
-                      Descargar bóveda remota
-                    </button>
-                  </form>
-                )}
               </>
             )}
 
@@ -728,10 +520,7 @@ export function SecurityPage({
             <div className="modal-summary">
               <span>Bóveda local actual: {activeProfileName}</span>
               <span>Fecha local: {new Date(activeProfileUpdatedAt).toLocaleString()}</span>
-              <span>Bóveda a importar: {pendingRemoteDisplayName}</span>
-              {pendingImportPreview.remoteUpdatedAt && (
-                <span>Fecha remota: {new Date(pendingImportPreview.remoteUpdatedAt).toLocaleString()}</span>
-              )}
+              <span>Bóveda a importar: {pendingImportDisplayName}</span>
               <span>Elementos: {pendingImportPreview.itemCount}</span>
               <span>Exportado: {new Date(pendingImportPreview.exportedAt).toLocaleString()}</span>
               <span>Esquema: {pendingImportPreview.schemaVersion}</span>
@@ -806,31 +595,7 @@ export function SecurityPage({
           </div>
         </div>
       )}
-      {isLogoutModalOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="logoutTitle">
-          <div className="modal-panel">
-            <h2 id="logoutTitle">Cerrar sesión</h2>
-            <p>Se cerrará tu sesión remota en este dispositivo. Tus bóvedas locales permanecerán guardadas.</p>
-            <div className="modal-actions">
-              <button
-                className="ghost-button"
-                type="button"
-                disabled={isWorking}
-                onClick={() => {
-                  setRemoteMessage(null);
-                  setIsLogoutModalOpen(false);
-                }}
-              >
-                Cancelar
-              </button>
-              <button className="secondary-button" type="button" disabled={isWorking} onClick={handleConfirmLogout}>
-                {isWorking ? 'Cerrando...' : 'Cerrar sesión'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      <Toast toast={backupMessage ?? masterPasswordMessage ?? remoteMessage} />
+      <Toast toast={backupMessage ?? masterPasswordMessage} />
     </section>
   );
 }

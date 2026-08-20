@@ -41,44 +41,6 @@ export function cloneProfileAsNewVault(profile: LocalVaultProfile, displayName?:
   };
 }
 
-export function findLocalProfilesForRemoteImport(
-  profiles: LocalVaultProfile[],
-  remoteVaultId: string,
-  importedProfile: LocalVaultProfile,
-): LocalVaultProfile[] {
-  return profiles
-    .filter((profile) => (
-      profile.remoteVaultId === remoteVaultId
-      || (
-        (!profile.remoteVaultId || profile.remoteVaultId === remoteVaultId)
-        && (profile.vaultId === importedProfile.vaultId || profile.salt === importedProfile.salt)
-      )
-    ))
-    .sort((first, second) => new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime());
-}
-
-export function findLocalProfileForRemoteImport(
-  profiles: LocalVaultProfile[],
-  remoteVaultId: string,
-  importedProfile: LocalVaultProfile,
-): LocalVaultProfile | undefined {
-  return findLocalProfilesForRemoteImport(profiles, remoteVaultId, importedProfile)[0];
-}
-
-export function prepareRemoteProfileImport(
-  importedProfile: LocalVaultProfile,
-  existingProfile?: LocalVaultProfile,
-): LocalVaultProfile {
-  if (!existingProfile) return importedProfile;
-
-  return {
-    ...importedProfile,
-    vaultId: existingProfile.vaultId,
-    displayName: existingProfile.displayName,
-    createdAt: existingProfile.createdAt,
-    lastUnlockedAt: existingProfile.lastUnlockedAt,
-  };
-}
 
 export function summarizeProfiles(profiles: LocalVaultProfile[]): Array<Pick<LocalVaultProfile, 'vaultId' | 'displayName' | 'updatedAt' | 'lastUnlockedAt'>> {
   return profiles.map(({ vaultId, displayName, updatedAt, lastUnlockedAt }) => ({ vaultId, displayName, updatedAt, lastUnlockedAt }));

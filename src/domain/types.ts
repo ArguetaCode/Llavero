@@ -54,11 +54,6 @@ export interface LocalVaultProfile {
   createdAt: string;
   updatedAt: string;
   lastUnlockedAt?: string;
-  lastRemoteSyncAt?: string;
-  lastRemoteUploadAt?: string;
-  lastRemoteDownloadAt?: string;
-  remoteVaultId?: string;
-  remoteDisplayName?: string;
 }
 
 export interface BackupImportPreview {
@@ -66,10 +61,7 @@ export interface BackupImportPreview {
   itemCount: number;
   schemaVersion: number;
   displayName?: string;
-  source?: 'file' | 'remote';
-  remoteVaultId?: string;
-  remoteDisplayName?: string;
-  remoteUpdatedAt?: string;
+  source?: 'file';
   existingLocalVaultId?: string;
 }
 
